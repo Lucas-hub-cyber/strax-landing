@@ -181,6 +181,40 @@ const MARKETING_RADAR_DATA: RadarDatum[] = [
   },
 ];
 
+function getRadarStructuralScore(data: RadarDatum[]) {
+  const total = data.reduce((sum, item) => sum + item.actual, 0);
+
+  return Math.round(total / data.length);
+}
+
+function getRadarInterpretation(score: number) {
+  if (score < 60) {
+    return {
+      message:
+        "Tu empresa tiene una estructura inestable. Estas creciendo con fugas operativas.",
+      alert:
+        "Estas perdiendo entre 8% y 18% de tu margen sin darte cuenta.",
+    };
+  }
+
+  if (score < 80) {
+    return {
+      message:
+        "Tu empresa tiene una estructura funcional, pero todavia hay fricciones que afectan el crecimiento.",
+      alert:
+        "Podrias estar perdiendo entre 5% y 10% de tu margen por ineficiencias invisibles.",
+    };
+  }
+
+  return {
+    message:
+      "Tu empresa muestra una estructura solida, aunque conviene validar puntos ciegos antes de escalar mas.",
+    alert:
+      "Aun con una base estable, pequenas fugas pueden erosionar margen si no se corrigen a tiempo.",
+    };
+  };
+}
+
 function getScoreValue(answers: string[]) {
   let score = 0;
 
@@ -332,6 +366,8 @@ function BrandMark() {
 export default function Home() {
   const [showWizard, setShowWizard] = useState(false);
   const [activeInsight, setActiveInsight] = useState(0);
+  const radarScore = getRadarStructuralScore(MARKETING_RADAR_DATA);
+  const radarInterpretation = getRadarInterpretation(radarScore);
 
   function handleInsightChange(direction: "prev" | "next") {
     setActiveInsight((current) => {
@@ -385,19 +421,21 @@ export default function Home() {
               </p>
 
               <h1 className="mt-8 max-w-4xl text-4xl font-semibold leading-tight tracking-[-0.05em] text-slate-950 sm:text-6xl lg:text-7xl">
-                Estas creciendo...
+                Tu empresa esta creciendo...
                 <br className="hidden sm:block" />
-                pero estas perdiendo dinero en el proceso.
+                pero cada mes pierdes dinero y no sabes donde.
               </h1>
 
               <p className="mt-8 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
-                Entre 5% y 20% de tus ingresos se estan perdiendo por como esta
-                disenada tu empresa. No es ventas. Es estructura.
+                No es un problema comercial. Es un problema estructural.
               </p>
 
               <p className="mt-5 max-w-2xl text-base font-medium leading-7 text-slate-900 sm:text-lg">
-                Si tu operacion crece pero el margen no, ya estas pagando el
-                problema.
+                Empresas en crecimiento pierden entre 5% y 20% de su margen por
+                problemas estructurales.
+                <br className="hidden sm:block" />
+                Si tu utilidad no crece al mismo ritmo que tus ventas, ya estas
+                pagando el problema.
               </p>
 
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
@@ -406,13 +444,13 @@ export default function Home() {
                   onClick={() => setShowWizard(true)}
                   className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
                 >
-                  Ver cuanto dinero estas perdiendo
+                  Diagnosticar mi empresa ahora
                 </button>
                 <a
                   href="#problema"
                   className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-7 py-4 text-base font-semibold text-slate-900 transition hover:border-slate-900 hover:bg-slate-100 sm:w-auto"
                 >
-                  Calcular fuga de dinero
+                  Ver cuanto dinero estoy perdiendo hoy
                 </a>
               </div>
 
@@ -473,6 +511,29 @@ export default function Home() {
                       <span className="h-2 w-2 rounded-full bg-blue-400" />
                       Empresa hoy
                     </span>
+                  </div>
+
+                  <div className="mt-6 text-center">
+                    <p className="text-sm text-gray-400">Nivel estructural</p>
+                    <h2 className="text-4xl font-bold">{radarScore} / 100</h2>
+                  </div>
+
+                  <p className="mt-2 text-center text-gray-400">
+                    {radarInterpretation.message}
+                  </p>
+
+                  <p className="mt-2 text-center font-medium text-red-400">
+                    {radarInterpretation.alert}
+                  </p>
+
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowWizard(true)}
+                      className="rounded-full bg-blue-600 px-6 py-3 text-white transition hover:bg-blue-500"
+                    >
+                      Diagnosticar mi empresa ahora
+                    </button>
                   </div>
                 </div>
               </div>
@@ -815,6 +876,18 @@ export default function Home() {
             </p>
           </div>
         </div>
+      </section>
+
+      <section className="mt-20 text-center">
+        <h2 className="text-2xl font-semibold">
+          Si tu empresa esta creciendo pero tu utilidad no...
+        </h2>
+        <p className="mt-2 text-gray-500">
+          ya no es un problema comercial. Es estructural.
+        </p>
+        <button className="mt-6 rounded-full bg-black px-6 py-3 text-white">
+          Diagnosticar ahora
+        </button>
       </section>
 
       <footer className="border-t border-slate-200 bg-slate-50">

@@ -1043,25 +1043,25 @@ function LeadWizard({ onBack }: { onBack: () => void }) {
 
     const score = getScoreValue(answers);
     const level = calculateScore(answers);
+    const payload = JSON.stringify({
+      ...leadData,
+      score,
+      level,
+    });
 
     try {
-      if (LEAD_CAPTURE_URL) {
-        const response = await fetch(LEAD_CAPTURE_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...leadData,
-            score,
-            level,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Lead capture failed");
-        }
+      if (!LEAD_CAPTURE_URL) {
+        throw new Error("Missing lead capture url");
       }
+
+      await fetch(LEAD_CAPTURE_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: payload,
+      });
 
       window.location.href = GOOGLE_CALENDAR_URL;
     } catch {

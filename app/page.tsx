@@ -188,30 +188,18 @@ function getRadarStructuralScore(data: RadarDatum[]) {
 }
 
 function getRadarInterpretation(score: number) {
-  if (score < 60) {
+  if (score > 80) {
     return {
-      message:
-        "Tu empresa tiene una estructura inestable. Estas creciendo con fugas operativas.",
-      alert:
-        "Estas perdiendo entre 8% y 18% de tu margen sin darte cuenta.",
-    };
-  }
-
-  if (score < 80) {
-    return {
-      message:
-        "Tu empresa tiene una estructura funcional, pero todavia hay fricciones que afectan el crecimiento.",
-      alert:
-        "Podrias estar perdiendo entre 5% y 10% de tu margen por ineficiencias invisibles.",
+      message: "Alta solidez estructural.",
+      alert: "Pocos riesgos visibles.",
     };
   }
 
   return {
     message:
-      "Tu empresa muestra una estructura solida, aunque conviene validar puntos ciegos antes de escalar mas.",
+      "Tu empresa muestra una estructura solida, aunque conviene validar puntos ciegos antes de escalar.",
     alert:
       "Aun con una base estable, pequenas fugas pueden erosionar margen si no se corrigen a tiempo.",
-    };
   };
 }
 

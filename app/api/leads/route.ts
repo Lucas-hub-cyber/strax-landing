@@ -6,6 +6,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const LEAD_NOTIFICATION_EMAIL =
   process.env.LEAD_NOTIFICATION_EMAIL ?? "lucas.valencia@ultimate.com.co";
 const LEAD_MAIL_FROM = process.env.LEAD_MAIL_FROM;
+const ENABLE_CLIENT_EMAIL = process.env.ENABLE_CLIENT_EMAIL === "true";
 
 type LeadPayload = {
   nombre?: string;
@@ -155,28 +156,49 @@ export async function POST(request: Request) {
       );
     }
 
-    await sendResendEmail({
-      to: LEAD_NOTIFICATION_EMAIL,
-      subject: `Lead STRAX | ${payload.nombre ?? "Sin nombre"} | ${payload.level ?? ""}`,
-      html: buildOwnerEmailHtml(payload),
-    });
+    const mailResults = {
+      owner: false,
+      client: false,
+    };
 
-    if (payload.email) {
-      await sendResendEmail({
-        to: payload.email,
-        subject: "Recibimos tu diagnostico STRAX",
-        html: buildClientEmailHtml(payload),
-      });
+    if (RESEND_API_KEY && LEAD_MAIL_FROM) {
+      try {
+        await sendResendEmail({
+          to: LEAD_NOTIFICATION_EMAIL,
+          subject: `Lead STRAX | ${payload.nombre ?? "Sin nombre"} | ${payload.level ?? ""}`,
+          html: buildOwnerEmailHtml(payload),
+        });
+        mailResults.owner = true;
+      } catch (error) {
+        console.error("[leads] owner email failed", error);
+      }
+
+      if (ENABLE_CLIENT_EMAIL && payload.email) {
+        try {
+          await sendResendEmail({
+            to: payload.email,
+            subject: "Recibimos tu diagnostico STRAX",
+            html: buildClientEmailHtml(payload),
+          });
+          mailResults.client = true;
+        } catch (error) {
+          console.error("[leads] client email failed", error);
+        }
+      }
+    } else {
+      console.warn("[leads] mail skipped due to missing configuration");
     }
 
     console.info("[leads] flow completed", {
       ownerEmail: LEAD_NOTIFICATION_EMAIL,
       clientEmail: payload.email ?? null,
+      mailResults,
     });
 
     return Response.json({
       ok: true,
       upstreamBody,
+      mailResults,
     });
   } catch (error) {
     console.error("[leads] flow failed", error);

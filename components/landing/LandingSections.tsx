@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   benefits,
@@ -11,13 +12,354 @@ import {
 } from "@/app/page.data";
 import { trackCtaClick } from "@/lib/analytics";
 
+type DiagnosticPayload = {
+  strategy: {
+    clarity: string;
+    focus: string;
+    value_proposition: string;
+    scalability: string;
+    coherence: string;
+  };
+  governance: {
+    founder_dependency: string;
+    role_clarity: string;
+    decision_structure: string;
+    accountability: string;
+    delegation: string;
+  };
+  operations: {
+    process_definition: string;
+    replicability: string;
+    bottlenecks: string;
+    execution_time: string;
+    quality_control: string;
+  };
+  data: {
+    metrics_exist: string;
+    data_accuracy: string;
+    decision_based_on_data: string;
+    frequency_of_review: string;
+    data_integration: string;
+  };
+  technology: {
+    tools_stack: string;
+    manual_dependency: string;
+    automation_level: string;
+    scalability: string;
+    system_reliability: string;
+  };
+  founder: {
+    decision_discipline: string;
+    delegation: string;
+    data_usage: string;
+    scaling_mindset: string;
+    architecture_acceptance: string;
+  };
+  economicInputs: {
+    revenue: number;
+    hours: number;
+    reworkRate: number;
+    costPerHour: number;
+    errorRate: number;
+    decisionTimeLost: number;
+    dataQualityLoss: number;
+    techDowntime: number;
+    costDowntimePerHour: number;
+  };
+};
+
+type SectionKey = Exclude<keyof DiagnosticPayload, "economicInputs">;
+
+type SelectFieldConfig = {
+  section: SectionKey;
+  field: string;
+  label: string;
+  options: string[];
+};
+
+const landingDiagnosticFields: SelectFieldConfig[] = [
+  {
+    section: "strategy",
+    field: "clarity",
+    label: "strategy.clarity",
+    options: ["low", "medium", "high"],
+  },
+  {
+    section: "governance",
+    field: "founder_dependency",
+    label: "governance.founder_dependency",
+    options: ["high", "medium", "low"],
+  },
+  {
+    section: "operations",
+    field: "process_definition",
+    label: "operations.process_definition",
+    options: ["none", "partial", "defined"],
+  },
+  {
+    section: "data",
+    field: "metrics_exist",
+    label: "data.metrics_exist",
+    options: ["none", "basic", "structured"],
+  },
+  {
+    section: "technology",
+    field: "tools_stack",
+    label: "technology.tools_stack",
+    options: ["disconnected", "semi_connected", "integrated"],
+  },
+  {
+    section: "founder",
+    field: "decision_discipline",
+    label: "founder.decision_discipline",
+    options: ["low", "medium", "high"],
+  },
+];
+
+const initialDiagnosticValues: DiagnosticPayload = {
+  strategy: {
+    clarity: "medium",
+    focus: "semi_focused",
+    value_proposition: "generic",
+    scalability: "limited",
+    coherence: "partial",
+  },
+  governance: {
+    founder_dependency: "medium",
+    role_clarity: "partial",
+    decision_structure: "semi_structured",
+    accountability: "informal",
+    delegation: "partial",
+  },
+  operations: {
+    process_definition: "partial",
+    replicability: "low",
+    bottlenecks: "frequent",
+    execution_time: "variable",
+    quality_control: "manual",
+  },
+  data: {
+    metrics_exist: "basic",
+    data_accuracy: "medium",
+    decision_based_on_data: "sometimes",
+    frequency_of_review: "monthly",
+    data_integration: "partial",
+  },
+  technology: {
+    tools_stack: "semi_connected",
+    manual_dependency: "medium",
+    automation_level: "partial",
+    scalability: "limited",
+    system_reliability: "acceptable",
+  },
+  founder: {
+    decision_discipline: "medium",
+    delegation: "partial",
+    data_usage: "basic",
+    scaling_mindset: "developing",
+    architecture_acceptance: "neutral",
+  },
+  economicInputs: {
+    revenue: 0,
+    hours: 0,
+    reworkRate: 0,
+    costPerHour: 0,
+    errorRate: 0,
+    decisionTimeLost: 0,
+    dataQualityLoss: 0,
+    techDowntime: 0,
+    costDowntimePerHour: 0,
+  },
+};
+
+type DiagnosticResult = {
+  layers?: Record<string, number | string>;
+  founder?: number | string;
+  IIA?: number | string;
+  IRA?: number | string;
+  CEA?: number | string;
+  MIE_percent?: number | string;
+};
+
+function getMetricNumber(value: number | string | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+  }
+
+  return null;
+}
+
+function getIiaTone(value: number | null) {
+  if (value === null) {
+    return "text-slate-950";
+  }
+
+  if (value < 50) {
+    return "text-red-600";
+  }
+
+  if (value <= 70) {
+    return "text-amber-500";
+  }
+
+  return "text-emerald-600";
+}
+
+function getIraTone(value: number | null) {
+  if (value === null) {
+    return "text-slate-950";
+  }
+
+  if (value > 70) {
+    return "text-red-700";
+  }
+
+  if (value >= 50) {
+    return "text-amber-500";
+  }
+
+  return "text-emerald-600";
+}
+
+function getStructuralFieldValue(
+  payload: DiagnosticPayload,
+  section: SectionKey,
+  field: string,
+) {
+  return payload[section][field as keyof DiagnosticPayload[SectionKey]];
+}
+
+function buildInitialSnapshot(payload: DiagnosticPayload) {
+  return {
+    strategy: {
+      clarity: payload.strategy.clarity,
+    },
+    governance: {
+      founder_dependency: payload.governance.founder_dependency,
+    },
+    operations: {
+      process_definition: payload.operations.process_definition,
+    },
+    data: {
+      metrics_exist: payload.data.metrics_exist,
+    },
+    technology: {
+      tools_stack: payload.technology.tools_stack,
+    },
+    founder: {
+      decision_discipline: payload.founder.decision_discipline,
+    },
+    economicInputs: {
+      revenue: payload.economicInputs.revenue,
+    },
+  };
+}
+
+function buildExecutiveReading(result: DiagnosticResult | null) {
+  const iiaValue = getMetricNumber(result?.IIA);
+  const iraValue = getMetricNumber(result?.IRA);
+  const ceaValue = getMetricNumber(result?.CEA);
+  const mieValue = getMetricNumber(result?.MIE_percent);
+
+  if (mieValue !== null && mieValue >= 15) {
+    return {
+      headline: "Riesgo estructural alto con fuga prioritaria",
+      summary:
+        "La lectura inicial sugiere una empresa con friccion estructural capaz de erosionar margen con rapidez si no se valida a tiempo.",
+      priority: "Prioridad alta: verificar arquitectura operativa y dependencia de decision.",
+      nextCheck:
+        "Siguiente validacion recomendada: confirmar donde se concentra la fuga entre gobierno, operaciones y capacidad de ejecucion.",
+    };
+  }
+
+  if (
+    (iiaValue !== null && iiaValue < 50) ||
+    (iraValue !== null && iraValue > 70) ||
+    (ceaValue !== null && ceaValue < 50)
+  ) {
+    return {
+      headline: "Riesgo estructural moderado con señales de tension",
+      summary:
+        "El sistema no parece colapsado, pero ya muestra suficientes sintomas para justificar una validacion mas rigurosa antes de escalar.",
+      priority:
+        "Prioridad media: revisar coordinacion, calidad de procesos y madurez de control.",
+      nextCheck:
+        "Siguiente validacion recomendada: contrastar si el problema principal esta en diseno de operacion, datos o centralizacion del fundador.",
+    };
+  }
+
+  return {
+    headline: "Lectura inicial estable, pero no concluyente",
+    summary:
+      "No aparecen señales criticas en este corte preliminar, aunque todavia puede haber fricciones ocultas que la Fase 2 ayude a validar.",
+    priority: "Prioridad actual: confirmar si la estabilidad es real o solo aparente.",
+    nextCheck:
+      "Siguiente validacion recomendada: revisar consistencia entre decision, visibilidad y capacidad de escalar sin retrabajo.",
+  };
+}
+
 export function LandingSections({
   onStartDiagnostic,
 }: {
   onStartDiagnostic: () => void;
 }) {
+  const router = useRouter();
   const [activeInsight, setActiveInsight] = useState(0);
+  const [diagnosticValues, setDiagnosticValues] =
+    useState<DiagnosticPayload>(initialDiagnosticValues);
+  const [diagnosticResult, setDiagnosticResult] =
+    useState<DiagnosticResult | null>(null);
+  const [diagnosticError, setDiagnosticError] = useState("");
+  const [isEvaluating, setIsEvaluating] = useState(false);
   const currentInsight = insights[activeInsight];
+
+  function handleDiagnosticChange(event: ChangeEvent<HTMLSelectElement>) {
+    const { name, value } = event.target;
+    const [section, field] = name.split(".") as [SectionKey, string];
+
+    setDiagnosticValues((current) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        [field]: value,
+      },
+    }));
+  }
+
+  async function handleDiagnosticSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsEvaluating(true);
+    setDiagnosticError("");
+    setDiagnosticResult(null);
+
+    try {
+      const response = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(diagnosticValues),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Diagnostic request failed with ${response.status}`);
+      }
+
+      const data = (await response.json()) as DiagnosticResult;
+      setDiagnosticResult(data);
+    } catch {
+      setDiagnosticError(
+        "No pudimos conectar con STRAX. Verifica que STRAX System este corriendo y que la variable STRAX_API_URL apunte correctamente al backend.",
+      );
+    } finally {
+      setIsEvaluating(false);
+    }
+  }
 
   function handleInsightChange(direction: "prev" | "next") {
     setActiveInsight((current) => {
@@ -28,6 +370,35 @@ export function LandingSections({
       return current === insights.length - 1 ? 0 : current + 1;
     });
   }
+
+  function handleContinueToPhaseTwo() {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(
+        "strax-initial-diagnosis",
+        JSON.stringify({
+          submittedAt: new Date().toISOString(),
+          payload: buildInitialSnapshot(diagnosticValues),
+          result: diagnosticResult,
+        }),
+      );
+    }
+
+    router.push("/fase-2");
+  }
+
+  const iiaValue = getMetricNumber(diagnosticResult?.IIA);
+  const iraValue = getMetricNumber(diagnosticResult?.IRA);
+  const ceaValue = getMetricNumber(diagnosticResult?.CEA);
+  const founderValue = getMetricNumber(diagnosticResult?.founder);
+  const mieValue = getMetricNumber(diagnosticResult?.MIE_percent);
+  const revenueValue = getMetricNumber(
+    diagnosticValues.economicInputs.revenue,
+  );
+  const executiveReading = buildExecutiveReading(diagnosticResult);
+  const annualLossEstimate =
+    revenueValue !== null && mieValue !== null
+      ? revenueValue * (mieValue / 100)
+      : null;
 
   return (
     <>
@@ -311,12 +682,13 @@ export function LandingSections({
               Prediagnostico
             </p>
             <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
-              Si varias de estas respuestas te incomodan, el problema ya es
+              Diagnostico empresarial inicial para detectar si tu problema ya es
               estructural.
             </h2>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              No necesitas completar un formulario largo para saber si hay
-              friccion real. Esta lectura rapida muestra si la operacion ya
+              No necesitas una consultoria larga para detectar si hay
+              ineficiencias operativas, dependencia del fundador o perdida de
+              rentabilidad. Esta lectura inicial muestra si la operacion ya
               esta drenando margen, control y velocidad.
             </p>
           </div>
@@ -324,26 +696,217 @@ export function LandingSections({
           <div className="mt-12 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.2)] sm:p-10">
             <div className="mb-6 flex flex-wrap gap-3 text-sm text-slate-600">
               <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2">
-                6 preguntas
+                Evaluacion estructural
               </span>
               <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2">
-                Sin reunion previa
+                Motor STRAX en vivo
               </span>
               <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2">
-                Resultado inmediato
+                Lectura inicial
               </span>
             </div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-900">
               Diagnostico guiado
             </p>
             <h3 className="mt-4 max-w-3xl text-2xl font-semibold tracking-[-0.03em] text-slate-950 sm:text-4xl">
-              Responde 6 preguntas y detecta en minutos si la fuga ya esta
-              impactando tu margen.
+              Responde un diagnostico inicial y detecta si el problema ya es
+              estructural, no solo operativo.
             </h3>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-              El diagnostico se abre sin salir de esta pagina, para que avances
-              directo al punto critico sin distracciones.
+              Esta primera lectura filtra severidad y abre la siguiente fase con
+              mejor contexto. El rigor completo del diagnostico estructural se
+              desarrolla despues.
             </p>
+            <form
+              onSubmit={handleDiagnosticSubmit}
+              className="mt-8 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5 sm:p-6"
+            >
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 sm:p-5">
+                <div className="mb-5 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-slate-500">
+                  <span className="rounded-full border border-slate-200 px-3 py-2">
+                    Baja friccion
+                  </span>
+                  <span className="rounded-full border border-slate-200 px-3 py-2">
+                    6 variables criticas
+                  </span>
+                  <span className="rounded-full border border-slate-200 px-3 py-2">
+                    Entrada a Fase 2
+                  </span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {landingDiagnosticFields.map((field) => (
+                    <label
+                      key={`${field.section}.${field.field}`}
+                      className="block"
+                    >
+                      <span className="mb-2 block text-sm font-medium text-slate-700">
+                        {field.label}
+                      </span>
+                      <select
+                        name={`${field.section}.${field.field}`}
+                        value={getStructuralFieldValue(
+                          diagnosticValues,
+                          field.section,
+                          field.field,
+                        )}
+                        onChange={handleDiagnosticChange}
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-blue-500"
+                      >
+                        {field.options.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isEvaluating}
+                className="mt-6 inline-flex cursor-pointer items-center justify-center rounded-full bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isEvaluating
+                  ? "Ejecutando diagnostico..."
+                  : "Ejecutar diagnostico STRAX"}
+              </button>
+
+              {diagnosticError ? (
+                <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {diagnosticError}
+                </p>
+              ) : null}
+
+              {diagnosticResult ? (
+                <div className="mt-5 rounded-[1.5rem] border border-blue-200 bg-white px-5 py-4 text-slate-950">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-900">
+                    Lectura inicial STRAX:
+                  </p>
+                  <div className="mt-4 rounded-[1.25rem] border border-blue-100 bg-blue-50 px-4 py-4">
+                    <h4 className="text-xl font-semibold tracking-[-0.03em] text-slate-950">
+                      {executiveReading.headline}
+                    </h4>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-700">
+                      {executiveReading.summary}
+                    </p>
+                    <p className="mt-3 text-sm font-medium text-slate-900">
+                      {executiveReading.priority}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                      {executiveReading.nextCheck}
+                    </p>
+                  </div>
+                  <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
+                    Esta salida no reemplaza el diagnostico profundo. Funciona
+                    como corte preliminar para estimar severidad estructural y
+                    decidir si debes pasar a Fase 2.
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <p className={getIiaTone(iiaValue)}>
+                      IIA: {diagnosticResult.IIA ?? "N/A"}
+                    </p>
+                    <p className={getIraTone(iraValue)}>
+                      IRA: {diagnosticResult.IRA ?? "N/A"}
+                    </p>
+                    <p>CEA: {diagnosticResult.CEA ?? "N/A"}</p>
+                    <p>Founder: {diagnosticResult.founder ?? "N/A"}</p>
+                    <p>
+                      MIE:{" "}
+                      {diagnosticResult.MIE_percent !== undefined
+                        ? `${diagnosticResult.MIE_percent}%`
+                        : "N/A"}
+                    </p>
+                  </div>
+
+                  {diagnosticResult.layers ? (
+                    <div className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-700">
+                        Layers
+                      </p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {Object.entries(diagnosticResult.layers).map(
+                          ([layer, value]) => (
+                            <p
+                              key={layer}
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                            >
+                              {layer}: {value}
+                            </p>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {diagnosticResult ? (
+                <div className="mt-4 rounded-[1.5rem] border border-slate-950 bg-slate-950 px-5 py-5 text-white">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-200">
+                    Hipotesis de impacto
+                  </p>
+                  <div className="mt-3 space-y-3 text-base leading-7 text-slate-200">
+                    <p>
+                      Esto no parece un problema aislado de operacion. Apunta a
+                      una friccion estructural que conviene verificar con mas
+                      rigor.
+                    </p>
+                    <p>
+                      La lectura inicial estima una posible fuga de hasta{" "}
+                      {mieValue !== null ? `${mieValue}%` : "N/A"} de tu
+                      operacion. La siguiente fase sirve para confirmar donde se
+                      produce y que tan critica es.
+                    </p>
+                    <p>Ahora tienes dos caminos:</p>
+                    <p>&bull; Profundizar la lectura estructural</p>
+                    <p>&bull; Seguir operando sin confirmar la causa real</p>
+                    {annualLossEstimate !== null ? (
+                      <p className="font-semibold text-white">
+                        Referencia economica preliminar:{" "}
+                        {annualLossEstimate.toLocaleString("es-CO", {
+                          style: "currency",
+                          currency: "COP",
+                          maximumFractionDigits: 0,
+                        })}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {diagnosticResult ? (
+                <div className="mt-4 rounded-[1.75rem] border border-blue-200 bg-gradient-to-br from-white via-blue-50 to-slate-100 px-6 py-6 shadow-[0_24px_70px_-45px_rgba(37,99,235,0.35)] sm:px-7 sm:py-7">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-900">
+                    Siguiente paso
+                  </p>
+                  <div className="mt-4 space-y-4 text-base leading-7 text-slate-700">
+                    <p>
+                      Esta lectura inicial ya sugiere que el siguiente paso no
+                      es una herramienta aislada. Es una verificacion estructural
+                      con mas contexto.
+                    </p>
+                    <p>
+                      En Fase 2 STRAX profundizamos la hipotesis y ordenamos el
+                      caso para responder con mas claridad:
+                    </p>
+                    <p>&bull; como deberia operar la empresa</p>
+                    <p>&bull; donde podria estar la fuga principal</p>
+                    <p>&bull; que vale la pena validar con GPT y criterio ejecutivo</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleContinueToPhaseTwo}
+                    className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-base font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
+                  >
+                    Entrar a Fase 2 STRAX
+                  </button>
+                </div>
+              ) : null}
+            </form>
             <button
               type="button"
               onClick={() => {

@@ -13,9 +13,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "STRAX | Diagnostico estructural empresarial",
+  title:
+    "STRAX | Diagnostico estructural empresarial para CEOs y fundadores",
   description:
-    "Landing para diagnostico estructural empresarial orientado a CEOs y fundadores que buscan recuperar rentabilidad corrigiendo ineficiencias internas.",
+    "Diagnostico estructural empresarial para detectar ineficiencias operativas, dependencia del fundador, problemas de procesos, datos y tecnologia que erosionan margen y rentabilidad.",
+  keywords: [
+    "diagnostico empresarial",
+    "diagnostico estructural empresarial",
+    "ineficiencias operativas",
+    "rentabilidad empresarial",
+    "procesos empresariales",
+    "dependencia del fundador",
+    "consultoria de operaciones",
+    "transformacion empresarial",
+    "diagnostico para CEO",
+    "problemas de margen",
+  ],
+  openGraph: {
+    title: "STRAX | Diagnostico estructural empresarial",
+    description:
+      "Detecta fugas de rentabilidad, dependencia del fundador y fricciones operativas con una lectura estructural para CEOs y fundadores.",
+    type: "website",
+    locale: "es_CO",
+  },
 };
 
 export const viewport: Viewport = {

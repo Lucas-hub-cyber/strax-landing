@@ -3,77 +3,82 @@ export const GOOGLE_CALENDAR_URL =
 export const LEAD_CAPTURE_URL = process.env.NEXT_PUBLIC_LEAD_CAPTURE_URL ?? "";
 
 export const problemPoints = [
-  "Procesos duplicados",
-  "Decisiones lentas",
-  "Sistemas desconectados",
-  "Equipos desalineados",
+  "Procesos duplicados que elevan costos",
+  "Decisiones lentas que frenan crecimiento",
+  "Sistemas desconectados que rompen control",
+  "Equipos desalineados que erosionan margen",
 ];
 
 export const diagnosticAreas = [
   {
     name: "Estrategia",
-    detail: "Claridad de foco, prioridades y mecanismos reales de ejecucion.",
+    detail:
+      "Claridad de foco, prioridades y mecanismos reales de ejecucion para crecer sin perder rentabilidad.",
   },
   {
     name: "Gobierno",
-    detail: "Roles, decisiones, escalamiento y control para operar sin friccion.",
+    detail:
+      "Roles, decisiones, escalamiento y control para reducir dependencia del fundador y operar sin friccion.",
   },
   {
     name: "Operaciones",
-    detail: "Flujos, cuellos de botella y fricciones que erosionan margen.",
+    detail:
+      "Flujos, cuellos de botella e ineficiencias operativas que erosionan margen y velocidad.",
   },
   {
     name: "Datos",
-    detail: "Calidad de informacion para decidir con velocidad y precision.",
+    detail:
+      "Calidad de informacion para tomar decisiones con velocidad, precision y menor riesgo.",
   },
   {
     name: "Tecnologia",
-    detail: "Arquitectura, integraciones y herramientas que sostienen la operacion.",
+    detail:
+      "Arquitectura, integraciones y herramientas que sostienen la operacion y evitan reprocesos.",
   },
 ];
 
 export const benefits = [
-  "Recuperar rentabilidad sin aumentar ventas",
-  "Mejor toma de decisiones",
-  "Mayor control del negocio",
-  "Menor dependencia del fundador",
+  "Recuperar rentabilidad sin depender de vender mas",
+  "Mejor toma de decisiones con menos intuicion costosa",
+  "Mayor control del negocio y de la ejecucion",
+  "Menor dependencia del fundador para operar",
 ];
 
 export const insights = [
   {
     id: "ventas",
     eyebrow: "Insight 01",
-    title: "El mercado cree que el problema es ventas.",
+    title: "El problema no siempre es ventas: muchas veces son ineficiencias internas.",
     body: [
-      "Pero cuando el margen cae mientras la operacion crece, el problema no esta afuera.",
-      "Esta en como esta disenada la empresa.",
+      "Cuando el margen cae mientras la operacion crece, el problema no siempre esta en el mercado.",
+      "Con frecuencia esta en procesos, decisiones y estructura empresarial mal disenada.",
     ],
   },
   {
     id: "crecimiento",
     eyebrow: "Insight 02",
-    title: "Crecer sin estructura solo acelera la perdida.",
+    title: "Crecer sin estructura solo acelera las perdidas operativas.",
     body: [
-      "Mas clientes sobre una operacion fragil no corrigen el sistema.",
-      "Escalan reprocesos, desgaste y decisiones cada vez mas lentas.",
+      "Mas clientes sobre una operacion fragil no corrigen el sistema ni mejoran la rentabilidad.",
+      "Escalan reprocesos, desgaste, errores y decisiones cada vez mas lentas.",
     ],
   },
   {
     id: "fundador",
     eyebrow: "Insight 03",
-    title: "Cuando todo depende del fundador, el negocio se vuelve cuello de botella.",
+    title: "Cuando todo depende del fundador, la empresa pierde velocidad y control.",
     body: [
-      "La dependencia centralizada frena ritmo, control y capacidad de delegar.",
-      "No es liderazgo: es una arquitectura que no logro madurar.",
+      "La dependencia centralizada frena ejecucion, control y capacidad real de delegar.",
+      "No es solo liderazgo: es una arquitectura empresarial que no termino de madurar.",
     ],
   },
   {
     id: "datos",
     eyebrow: "Insight 04",
-    title: "Sin datos confiables, la empresa opera por intuicion costosa.",
+    title: "Sin datos confiables, la empresa opera con intuicion y margen en riesgo.",
     body: [
-      "La sensacion de avance puede esconder fugas de margen, retrabajo y desalineacion.",
-      "La falta de lectura estructural hace que el problema se vea tarde.",
+      "La sensacion de avance puede esconder fugas de margen, retrabajo, errores y desalineacion.",
+      "Sin una lectura estructural, el problema suele verse tarde y costar mas corregirlo.",
     ],
   },
 ];

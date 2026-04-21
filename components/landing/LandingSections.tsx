@@ -175,8 +175,18 @@ const initialDiagnosticValues: DiagnosticPayload = {
 type DiagnosticResult = {
   layers?: Record<string, number | string>;
   founder?: number | string;
+  IIA_base?: number | string;
+  structural_penalty?: number | string;
   IIA?: number | string;
+  IRA_base?: number | string;
+  critical_penalty?: number | string;
+  founder_penalty?: number | string;
   IRA?: number | string;
+  CR?: number | string;
+  CE?: number | string;
+  CGov?: number | string;
+  CD?: number | string;
+  CT?: number | string;
   CEA?: number | string;
   MIE_percent?: number | string;
 };
@@ -821,25 +831,67 @@ export function LandingSections({
                     </p>
                   </div>
 
-                  {diagnosticResult.layers ? (
-                    <div className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-700">
-                        Layers
+                  <details className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                    <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.22em] text-slate-700">
+                      Ver detalle tecnico del motor
+                    </summary>
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        IIA_base: {diagnosticResult.IIA_base ?? "N/A"}
                       </p>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                        {Object.entries(diagnosticResult.layers).map(
-                          ([layer, value]) => (
-                            <p
-                              key={layer}
-                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                            >
-                              {layer}: {value}
-                            </p>
-                          ),
-                        )}
-                      </div>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        structural_penalty:{" "}
+                        {diagnosticResult.structural_penalty ?? "N/A"}
+                      </p>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        IRA_base: {diagnosticResult.IRA_base ?? "N/A"}
+                      </p>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        critical_penalty:{" "}
+                        {diagnosticResult.critical_penalty ?? "N/A"}
+                      </p>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        founder_penalty:{" "}
+                        {diagnosticResult.founder_penalty ?? "N/A"}
+                      </p>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        CR: {diagnosticResult.CR ?? "N/A"}
+                      </p>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        CE: {diagnosticResult.CE ?? "N/A"}
+                      </p>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        CGov: {diagnosticResult.CGov ?? "N/A"}
+                      </p>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        CD: {diagnosticResult.CD ?? "N/A"}
+                      </p>
+                      <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                        CT: {diagnosticResult.CT ?? "N/A"}
+                      </p>
                     </div>
-                  ) : null}
+
+                    {diagnosticResult.layers ? (
+                      <div className="mt-4 rounded-[1.1rem] border border-slate-200 bg-white p-4">
+                        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-700">
+                          Layers
+                        </p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                          {Object.entries(diagnosticResult.layers).map(
+                            ([layer, value]) => (
+                              <p
+                                key={layer}
+                                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                              >
+                                {layer}: {value}
+                              </p>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </details>
                 </div>
               ) : null}
 

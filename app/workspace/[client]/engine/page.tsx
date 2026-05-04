@@ -1,3 +1,5 @@
+import { WorkspaceIdentity } from "@/components/workspace/WorkspaceIdentity";
+
 const structuralRisks = [
   {
     title: "Founder dependency",
@@ -105,7 +107,7 @@ function StatusPill({ value }: { value: string }) {
           : "border-white/10 bg-white/5 text-slate-300";
 
   return (
-    <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${tone}`}>
+    <span className={`inline-flex max-w-full rounded-full border px-3 py-1 text-xs font-semibold ${tone}`}>
       {value}
     </span>
   );
@@ -113,9 +115,15 @@ function StatusPill({ value }: { value: string }) {
 
 export default function StraxEnginePage() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#172554_0%,#020617_44%,#020617_100%)] px-6 py-8 text-white lg:px-10">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#172554_0%,#020617_44%,#020617_100%)] px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <header className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.85)] sm:p-8">
+        <WorkspaceIdentity
+          clientName="Cliente Demo STRAX"
+          clientDetail="Motor estructural para traducir riesgos en ownership, procesos y control."
+          context="STRAX Engine"
+        />
+
+        <header className="mt-6 rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.85)] sm:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.28em] text-blue-200">
@@ -165,7 +173,7 @@ export default function StraxEnginePage() {
             Ownership map
           </p>
           <div className="mt-5 overflow-hidden rounded-[1.25rem] border border-white/10">
-            <div className="grid grid-cols-4 bg-slate-950/70 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <div className="hidden bg-slate-950/70 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 md:grid md:grid-cols-4">
               <div className="p-4">Área</div>
               <div className="p-4">Responsable actual</div>
               <div className="p-4">Dependencia founder</div>

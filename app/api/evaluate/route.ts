@@ -1,51 +1,80 @@
-const STRAX_API_URL =
-  process.env.STRAX_API_URL ??
-  process.env.NEXT_PUBLIC_STRAX_API_URL ??
-  "http://localhost:3001";
+import { evaluateStructure, hashEvaluation, rules } from "@/engine/scoring";
+import { hasValidConsent, STRAX_PRIVACY_VERSION, STRAX_TERMS_VERSION } from "@/lib/legal";
+
+type RawPayload = Record<string, unknown>;
+
+function normalizeSection(section: unknown) {
+  if (!section || typeof section !== "object" || Array.isArray(section)) {
+    return {};
+  }
+
+  return section as Record<string, unknown>;
+}
+
+function mapInput(rawInput: RawPayload = {}) {
+  const economicInputs = normalizeSection(rawInput.economicInputs);
+
+  return {
+    strategy: normalizeSection(rawInput.strategy),
+    governance: normalizeSection(rawInput.governance),
+    operations: normalizeSection(rawInput.operations),
+    data: normalizeSection(rawInput.data),
+    technology: normalizeSection(rawInput.technology),
+    founder: normalizeSection(rawInput.founder),
+    economicInputs: {
+      revenue: Number(economicInputs.revenue) || 0,
+      hours: Number(economicInputs.hours) || 0,
+      reworkRate: Number(economicInputs.reworkRate) || 0,
+      costPerHour: Number(economicInputs.costPerHour) || 0,
+      errorRate: Number(economicInputs.errorRate) || 0,
+      decisionTimeLost: Number(economicInputs.decisionTimeLost) || 0,
+      dataQualityLoss: Number(economicInputs.dataQualityLoss) || 0,
+      techDowntime: Number(economicInputs.techDowntime) || 0,
+      costDowntimePerHour: Number(economicInputs.costDowntimePerHour) || 0,
+    },
+  };
+}
 
 export async function POST(request: Request) {
   try {
-    const payload = await request.json();
+    const payload = (await request.json()) as RawPayload;
 
-    const upstreamResponse = await fetch(`${STRAX_API_URL}/evaluate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-    });
-
-    const responseText = await upstreamResponse.text();
-    let upstreamBody: unknown = null;
-
-    try {
-      upstreamBody = responseText ? JSON.parse(responseText) : null;
-    } catch {
-      upstreamBody = responseText;
-    }
-
-    if (!upstreamResponse.ok) {
+    if (!hasValidConsent(payload)) {
       return Response.json(
         {
           ok: false,
-          error: "STRAX evaluate upstream failed",
-          status: upstreamResponse.status,
-          upstreamBody,
+          error: "Consent required",
+          message:
+            "STRAX requiere autorización de tratamiento de datos y aceptación de términos antes de ejecutar la evaluación.",
+          requiredTermsVersion: STRAX_TERMS_VERSION,
+          requiredPrivacyVersion: STRAX_PRIVACY_VERSION,
         },
-        { status: 502 },
+        { status: 403 },
       );
     }
 
-    return Response.json(upstreamBody, { status: 200 });
+    const mappedInput = mapInput(payload);
+    const evaluation = evaluateStructure(mappedInput);
+    const evaluationHash = await hashEvaluation({
+      modelVersion: rules.version,
+      input: mappedInput,
+      evaluation,
+    });
+
+    return Response.json({
+      ...evaluation,
+      modelVersion: rules.version,
+      evaluationHash,
+      evaluatedAt: new Date().toISOString(),
+    });
   } catch (error) {
     return Response.json(
       {
         ok: false,
-        error:
-          error instanceof Error ? error.message : "Unknown evaluation error",
+        error: "Invalid JSON payload",
+        message: error instanceof Error ? error.message : "Unknown evaluation error",
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
 }

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { ConsentCheckbox } from "@/components/legal/ConsentCheckbox";
+import { STRAX_PRIVACY_VERSION, STRAX_TERMS_VERSION } from "@/lib/legal";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 
 type InitialDiagnosisSnapshot = {
@@ -20,6 +22,10 @@ type InitialDiagnosisSnapshot = {
     IIA?: number | string;
     IRA?: number | string;
     MIE_percent?: number | string;
+    CEA?: number | string;
+    modelVersion?: string;
+    evaluationHash?: string;
+    evaluatedAt?: string;
   };
 };
 
@@ -58,6 +64,10 @@ type StraxEngineResponse = {
     IIA?: number | string;
     IRA?: number | string;
     MIE_percent?: number | string;
+    CEA?: number | string;
+    modelVersion?: string;
+    evaluationHash?: string;
+    evaluatedAt?: string;
   };
 };
 
@@ -147,6 +157,96 @@ function getMetricNumber(value: number | string | undefined) {
   return null;
 }
 
+function getIiaReading(value: number | null) {
+  if (value === null) {
+    return "Pendiente de calcular.";
+  }
+
+  if (value < 50) {
+    return "Arquitectura fragil: la empresa depende de pocas personas, procesos o controles.";
+  }
+
+  if (value < 70) {
+    return "Arquitectura intermedia: funciona, pero aun tiene friccion estructural.";
+  }
+
+  return "Arquitectura saludable: la operacion tiene mejor base para escalar.";
+}
+
+function getIraReading(value: number | null) {
+  if (value === null) {
+    return "Pendiente de calcular.";
+  }
+
+  if (value > 70) {
+    return "Riesgo alto: conviene intervenir antes de crecer o automatizar.";
+  }
+
+  if (value >= 50) {
+    return "Riesgo medio: hay senales claras de perdida de control o velocidad.";
+  }
+
+  return "Riesgo controlado: no desaparece, pero no parece critico en este corte.";
+}
+
+function getMieReading(value: number | null) {
+  if (value === null) {
+    return "Pendiente de calcular.";
+  }
+
+  if (value >= 15) {
+    return "Impacto alto: posible fuga relevante sobre ingresos o margen.";
+  }
+
+  if (value > 0) {
+    return "Impacto visible: hay fuga economica estimada, pero no extrema.";
+  }
+
+  return "Sin impacto economico estimado con los datos disponibles.";
+}
+
+function formatEstimatedMoney(value: number | null) {
+  if (value === null) {
+    return "sin estimacion";
+  }
+
+  return value.toLocaleString("es-CO", {
+    maximumFractionDigits: 0,
+  });
+}
+
+function translateFounderDependency(value: string | undefined) {
+  if (value === "high") {
+    return "alta: muchas decisiones todavia dependen del fundador.";
+  }
+
+  if (value === "medium") {
+    return "media: existe delegacion parcial, pero aun hay carga centralizada.";
+  }
+
+  if (value === "low") {
+    return "baja: la empresa opera con mayor autonomia del fundador.";
+  }
+
+  return "sin dato suficiente.";
+}
+
+function translateProcessDefinition(value: string | undefined) {
+  if (value === "defined") {
+    return "definida: los procesos son claros y repetibles.";
+  }
+
+  if (value === "partial") {
+    return "parcial: existen procesos, pero no estan completamente estandarizados.";
+  }
+
+  if (value === "none") {
+    return "baja: la operacion depende demasiado de criterio informal.";
+  }
+
+  return "sin dato suficiente.";
+}
+
 function buildStructuralHypothesis(snapshot: InitialDiagnosisSnapshot | null) {
   if (!snapshot) {
     return {
@@ -204,6 +304,8 @@ export default function FaseDosPage() {
     useState<StraxEngineResponse | null>(null);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [workspaceError, setWorkspaceError] = useState("");
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [consentError, setConsentError] = useState("");
 
   useEffect(() => {
     setStoredDiagnosis(readStoredDiagnosis());
@@ -274,8 +376,11 @@ export default function FaseDosPage() {
       },
       operator_prompt:
         "Usa este contexto para profundizar el diagnostico STRAX, detectar cuellos de botella estructurales y proponer la siguiente lectura ejecutiva.",
+      consentAccepted,
+      acceptedTermsVersion: STRAX_TERMS_VERSION,
+      acceptedPrivacyVersion: STRAX_PRIVACY_VERSION,
     };
-  }, [formState, storedDiagnosis]);
+  }, [consentAccepted, formState, storedDiagnosis]);
 
   function updateField<K extends keyof DeepDiagnosticState>(
     key: K,
@@ -434,6 +539,13 @@ export default function FaseDosPage() {
   }
 
   async function handlePrepareBrief() {
+    if (!consentAccepted) {
+      setConsentError(
+        "Debes aceptar términos y política de datos antes de preparar la lectura.",
+      );
+      return;
+    }
+
     setIsBriefReady(true);
     setIsSubmittingBrief(true);
     setSubmitError("");
@@ -454,27 +566,33 @@ export default function FaseDosPage() {
     const timeoutId = window.setTimeout(() => controller.abort(), 45000);
 
     try {
-      console.log("calling STRAX backend...");
-
-      const response = await fetch("http://localhost:3001/analyze", {
+      const consentResponse = await fetch("/api/consent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: [
-            gptBrief.operator_prompt,
-            "",
-            "Contexto STRAX capturado:",
-            JSON.stringify(gptBrief, null, 2),
-          ]
-            .filter(Boolean)
-            .join("\n"),
+          acceptedTermsVersion: STRAX_TERMS_VERSION,
+          acceptedPrivacyVersion: STRAX_PRIVACY_VERSION,
         }),
+      });
+
+      if (!consentResponse.ok) {
+        throw new Error("No se pudo registrar el consentimiento legal.");
+      }
+
+      console.log("calling STRAX phase 2 API...");
+
+      const response = await fetch("/api/fase-2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(gptBrief),
         signal: controller.signal,
       });
 
-      console.log("STRAX backend responded");
+      console.log("STRAX phase 2 API responded");
 
       const responseText = await response.text();
       let data: {
@@ -497,7 +615,7 @@ export default function FaseDosPage() {
       }
 
       if (!response.ok) {
-        console.warn("STRAX backend error", {
+        console.warn("STRAX phase 2 API error", {
           status: response.status,
           body: data,
         });
@@ -505,15 +623,15 @@ export default function FaseDosPage() {
         throw new Error(
           data.message ??
             data.error ??
-            `STRAX backend respondio con estado ${response.status}.`,
+            `STRAX phase 2 API respondio con estado ${response.status}.`,
         );
       }
 
       if (data.ok === false) {
-        console.warn("STRAX backend rejected request", data);
+        console.warn("STRAX phase 2 API rejected request", data);
 
         throw new Error(
-          data.message ?? data.error ?? "STRAX backend rechazo la solicitud.",
+          data.message ?? data.error ?? "STRAX phase 2 API rechazo la solicitud.",
         );
       }
 
@@ -538,15 +656,15 @@ export default function FaseDosPage() {
         );
       }
     } catch (error) {
-      console.warn("STRAX backend request failed", error);
+      console.warn("STRAX phase 2 API request failed", error);
 
       setSubmitError(
         error instanceof DOMException && error.name === "AbortError"
-          ? "STRAX backend no respondio en 45 segundos. Verifica que extract-system este corriendo en localhost:3001 y que el analisis no se haya quedado procesando."
+          ? "La API interna de STRAX no respondio en 45 segundos. Revisa la salida de npm run dev."
           : error instanceof SyntaxError
-            ? "STRAX backend respondio, pero la respuesta no es JSON valido."
+            ? "La API interna de STRAX respondio, pero la respuesta no es JSON valido."
             : error instanceof TypeError
-              ? "No se pudo conectar con STRAX backend. Verifica que extract-system este activo en localhost:3001 y permita CORS."
+              ? "No se pudo conectar con la API interna de STRAX. Revisa que npm run dev siga activo."
               : error instanceof Error
                 ? error.message
                 : "No se pudo preparar la salida de Fase 2.",
@@ -966,7 +1084,17 @@ export default function FaseDosPage() {
                   que la siguiente lectura con GPT empiece con contexto real y no
                   con preguntas improvisadas.
                 </p>
-                <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
+                  <div className="w-full">
+                    <ConsentCheckbox
+                      checked={consentAccepted}
+                      onChange={(checked) => {
+                        setConsentAccepted(checked);
+                        setConsentError("");
+                      }}
+                      error={consentError}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={handlePrepareBrief}
@@ -1010,29 +1138,68 @@ export default function FaseDosPage() {
                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100">
                           Lectura estructural
                         </p>
+                        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200">
+                          Estos indicadores resumen la salud estructural del
+                          negocio: que tan preparada esta la empresa para
+                          operar, que riesgo acumula y si ya aparece una fuga
+                          economica estimada.
+                        </p>
                         <div className="mt-4 grid gap-3 sm:grid-cols-3">
                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                               IIA
                             </p>
+                            <p className="mt-1 text-sm font-semibold text-blue-100">
+                              Indice de arquitectura interna
+                            </p>
                             <p className="mt-2 text-3xl font-semibold text-white">
                               {getMetricNumber(straxEngineResponse.result?.IIA) ?? "--"}
+                            </p>
+                            <p className="mt-3 text-sm leading-6 text-slate-300">
+                              {getIiaReading(
+                                getMetricNumber(straxEngineResponse.result?.IIA),
+                              )}
                             </p>
                           </div>
                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                               IRA
                             </p>
+                            <p className="mt-1 text-sm font-semibold text-blue-100">
+                              Indice de riesgo acumulado
+                            </p>
                             <p className="mt-2 text-3xl font-semibold text-white">
                               {getMetricNumber(straxEngineResponse.result?.IRA) ?? "--"}
+                            </p>
+                            <p className="mt-3 text-sm leading-6 text-slate-300">
+                              {getIraReading(
+                                getMetricNumber(straxEngineResponse.result?.IRA),
+                              )}
                             </p>
                           </div>
                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                               MIE
                             </p>
+                            <p className="mt-1 text-sm font-semibold text-blue-100">
+                              Margen interno estimado
+                            </p>
                             <p className="mt-2 text-3xl font-semibold text-white">
                               {getMetricNumber(straxEngineResponse.result?.MIE_percent) ?? 0}%
+                            </p>
+                            <p className="mt-3 text-sm leading-6 text-slate-300">
+                              {getMieReading(
+                                getMetricNumber(
+                                  straxEngineResponse.result?.MIE_percent,
+                                ),
+                              )}
+                            </p>
+                            <p className="mt-3 rounded-xl border border-emerald-200/10 bg-emerald-200/10 px-3 py-2 text-sm font-semibold leading-6 text-emerald-100">
+                              Impacto estimado:{" "}
+                              {formatEstimatedMoney(
+                                getMetricNumber(straxEngineResponse.result?.CEA),
+                              )}{" "}
+                              al ano.
                             </p>
                           </div>
                         </div>
@@ -1041,15 +1208,32 @@ export default function FaseDosPage() {
                             <span className="font-semibold text-white">
                               Dependencia del fundador:
                             </span>{" "}
-                            {straxEngineResponse.structured?.governance
-                              ?.founder_dependency ?? "sin dato"}
+                            {translateFounderDependency(
+                              straxEngineResponse.structured?.governance
+                                ?.founder_dependency,
+                            )}
                           </p>
                           <p>
                             <span className="font-semibold text-white">
                               Definicion de procesos:
                             </span>{" "}
-                            {straxEngineResponse.structured?.operations
-                              ?.process_definition ?? "sin dato"}
+                            {translateProcessDefinition(
+                              straxEngineResponse.structured?.operations
+                                ?.process_definition,
+                            )}
+                          </p>
+                        </div>
+                        <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-300">
+                          <p className="font-semibold uppercase tracking-[0.18em] text-blue-100">
+                            Trazabilidad STRAX
+                          </p>
+                          <p className="mt-2">
+                            Modelo:{" "}
+                            {straxEngineResponse.result?.modelVersion ?? "N/A"}
+                          </p>
+                          <p className="mt-1 break-all">
+                            Hash:{" "}
+                            {straxEngineResponse.result?.evaluationHash ?? "N/A"}
                           </p>
                         </div>
 

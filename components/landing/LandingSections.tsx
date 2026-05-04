@@ -10,6 +10,7 @@ import {
   insights,
   problemPoints,
 } from "@/app/page.data";
+import { STRAX_PRIVACY_VERSION, STRAX_TERMS_VERSION } from "@/lib/legal";
 import { trackCtaClick } from "@/lib/analytics";
 
 type DiagnosticPayload = {
@@ -189,6 +190,9 @@ type DiagnosticResult = {
   CT?: number | string;
   CEA?: number | string;
   MIE_percent?: number | string;
+  modelVersion?: string;
+  evaluationHash?: string;
+  evaluatedAt?: string;
 };
 
 function getMetricNumber(value: number | string | undefined) {
@@ -353,7 +357,12 @@ export function LandingSections({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(diagnosticValues),
+        body: JSON.stringify({
+          ...diagnosticValues,
+          consentAccepted: true,
+          acceptedTermsVersion: STRAX_TERMS_VERSION,
+          acceptedPrivacyVersion: STRAX_PRIVACY_VERSION,
+        }),
       });
 
       if (!response.ok) {
@@ -364,7 +373,7 @@ export function LandingSections({
       setDiagnosticResult(data);
     } catch {
       setDiagnosticError(
-        "No pudimos conectar con STRAX. Verifica que STRAX System este corriendo y que la variable STRAX_API_URL apunte correctamente al backend.",
+        "No pudimos ejecutar el motor STRAX interno. Intenta nuevamente o revisa la salida del servidor Next.",
       );
     } finally {
       setIsEvaluating(false);

@@ -91,7 +91,7 @@ const roadmap = [
 
 function StatusBadge({ value, tone }: { value: string; tone: string }) {
   return (
-    <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${tone}`}>
+    <span className={`inline-flex max-w-full rounded-full border px-3 py-1 text-xs font-semibold ${tone}`}>
       {value}
     </span>
   );
@@ -99,9 +99,15 @@ function StatusBadge({ value, tone }: { value: string; tone: string }) {
 
 export default function ArchitectureWorkspacePage() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#172554_0%,#020617_46%,#020617_100%)] px-6 py-8 text-white lg:px-10">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#172554_0%,#020617_46%,#020617_100%)] px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <header className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.75)] sm:p-8">
+        <WorkspaceIdentity
+          clientName="Cliente Demo STRAX"
+          clientDetail="Arquitectura objetivo preparada para convertir hallazgos en sistema operativo."
+          context="Arquitectura objetivo"
+        />
+
+        <header className="mt-6 rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.75)] sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-blue-200">
             STRAX Architecture Workspace
           </p>
@@ -274,3 +280,4 @@ export default function ArchitectureWorkspacePage() {
     </main>
   );
 }
+import { WorkspaceIdentity } from "@/components/workspace/WorkspaceIdentity";

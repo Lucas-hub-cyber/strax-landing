@@ -14,6 +14,7 @@ import {
   ContinueArchitectureButton,
   NewSessionButton,
 } from "./WorkspaceActions";
+import { WorkspaceIdentity } from "@/components/workspace/WorkspaceIdentity";
 
 type WorkspaceData = {
   client: Client | null;
@@ -361,7 +362,7 @@ export default async function WorkspacePage({
     client?.created_at;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#172554_0%,#020617_46%,#020617_100%)] px-6 py-8 text-white lg:px-10">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#172554_0%,#020617_46%,#020617_100%)] px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <Link
           href="/"
@@ -380,14 +381,22 @@ export default async function WorkspacePage({
           </div>
         ) : null}
 
+        <div className="mt-6">
+          <WorkspaceIdentity
+            clientName={client?.name ?? "Cliente no encontrado"}
+            clientDetail={`${client?.industry ?? "Industria sin registrar"} · ${client?.status ?? "Sin estado"} · Ultima revision: ${formatDate(lastReview)}`}
+            context="Workspace del cliente"
+          />
+        </div>
+
         <header className="mt-6 rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.75)] sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.28em] text-blue-200">
-                STRAX Workspace
+                Lectura ejecutiva
               </p>
               <h1 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
-                {client?.name ?? "Cliente no encontrado"}
+                Estado estructural del sistema
               </h1>
               <div className="mt-5 flex flex-wrap gap-3 text-sm">
                 <span

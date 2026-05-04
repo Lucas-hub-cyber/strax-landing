@@ -8,8 +8,8 @@ import {
   MARKETING_RADAR_DATA,
 } from "@/app/page.data";
 import { ClosingSection } from "@/components/landing/ClosingSection";
+import { CompactLandingSections } from "@/components/landing/CompactLandingSections";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { LandingSections } from "@/components/landing/LandingSections";
 import { LeadWizard } from "@/components/landing/LeadWizard";
 import { MobileStickyCTA } from "@/components/landing/MobileStickyCTA";
 
@@ -55,8 +55,8 @@ export default function Home() {
         radarInterpretation={radarInterpretation}
         onStartDiagnostic={openWizard}
       />
-      <LandingSections onStartDiagnostic={openWizard} />
-      <ClosingSection onStartDiagnostic={openWizard} />
+      <CompactLandingSections onStartDiagnostic={openWizard} />
+      <ClosingSection />
       <MobileStickyCTA onStartDiagnostic={openWizard} />
     </main>
   );

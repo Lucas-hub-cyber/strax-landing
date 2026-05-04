@@ -1,0 +1,194 @@
+{
+  "version": "1.0.0",
+  "scale": {
+    "min": 0,
+    "max": 100
+  },
+  "theta": 35,
+  "layers": {
+    "strategy": {
+      "code": "E",
+      "name": "Estrategia",
+      "subvariables": {
+        "clarity": {
+          "low": 30,
+          "medium": 65,
+          "high": 95
+        },
+        "focus": {
+          "diversified": 30,
+          "semi_focused": 65,
+          "focused": 95
+        },
+        "value_proposition": {
+          "unclear": 30,
+          "generic": 65,
+          "differentiated": 95
+        },
+        "scalability": {
+          "none": 25,
+          "limited": 60,
+          "scalable": 95
+        },
+        "coherence": {
+          "contradictory": 20,
+          "partial": 60,
+          "aligned": 95
+        }
+      }
+    },
+    "governance": {
+      "code": "G",
+      "name": "Gobierno",
+      "subvariables": {
+        "founder_dependency": {
+          "high": 20,
+          "medium": 60,
+          "low": 95
+        },
+        "role_clarity": {
+          "unclear": 25,
+          "partial": 60,
+          "clear": 95
+        },
+        "decision_structure": {
+          "centralized": 20,
+          "semi_structured": 60,
+          "distributed": 95
+        },
+        "accountability": {
+          "none": 20,
+          "informal": 60,
+          "formal": 95
+        },
+        "delegation": {
+          "none": 20,
+          "partial": 60,
+          "structured": 95
+        }
+      }
+    },
+    "operations": {
+      "code": "O",
+      "name": "Operacion",
+      "subvariables": {
+        "process_definition": {
+          "none": 20,
+          "partial": 60,
+          "defined": 95
+        },
+        "replicability": {
+          "none": 20,
+          "low": 55,
+          "high": 95
+        },
+        "bottlenecks": {
+          "constant": 20,
+          "frequent": 55,
+          "controlled": 95
+        },
+        "execution_time": {
+          "unpredictable": 20,
+          "variable": 60,
+          "stable": 95
+        },
+        "quality_control": {
+          "none": 20,
+          "manual": 60,
+          "systematic": 95
+        }
+      }
+    },
+    "data": {
+      "code": "D",
+      "name": "Datos",
+      "subvariables": {
+        "metrics_exist": {
+          "none": 20,
+          "basic": 60,
+          "structured": 95
+        },
+        "data_accuracy": {
+          "low": 25,
+          "medium": 60,
+          "high": 95
+        },
+        "decision_based_on_data": {
+          "never": 20,
+          "sometimes": 60,
+          "always": 95
+        },
+        "frequency_of_review": {
+          "never": 20,
+          "monthly": 60,
+          "weekly": 95
+        },
+        "data_integration": {
+          "none": 20,
+          "partial": 60,
+          "integrated": 95
+        }
+      }
+    },
+    "technology": {
+      "code": "T",
+      "name": "Tecnologia",
+      "subvariables": {
+        "tools_stack": {
+          "disconnected": 20,
+          "semi_connected": 60,
+          "integrated": 95
+        },
+        "manual_dependency": {
+          "high": 20,
+          "medium": 60,
+          "low": 95
+        },
+        "automation_level": {
+          "none": 20,
+          "partial": 60,
+          "advanced": 95
+        },
+        "scalability": {
+          "none": 20,
+          "limited": 60,
+          "high": 95
+        },
+        "system_reliability": {
+          "unstable": 20,
+          "acceptable": 60,
+          "robust": 95
+        }
+      }
+    }
+  },
+  "founder": {
+    "subvariables": {
+      "decision_discipline": {
+        "low": 20,
+        "medium": 60,
+        "high": 95
+      },
+      "delegation": {
+        "none": 20,
+        "partial": 60,
+        "structured": 95
+      },
+      "data_usage": {
+        "none": 20,
+        "basic": 60,
+        "advanced": 95
+      },
+      "scaling_mindset": {
+        "absent": 20,
+        "developing": 60,
+        "clear": 95
+      },
+      "architecture_acceptance": {
+        "resistant": 20,
+        "neutral": 60,
+        "aligned": 95
+      }
+    }
+  }
+}

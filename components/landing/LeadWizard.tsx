@@ -7,20 +7,57 @@ import {
   calculateScore,
   getResultText,
   getScoreValue,
-  GOOGLE_CALENDAR_URL,
   questions,
 } from "@/app/page.data";
 import {
   BackButton,
   WizardQuestionStep,
 } from "@/components/landing/WizardPrimitives";
+import { ConsentCheckbox } from "@/components/legal/ConsentCheckbox";
+import { STRAX_PRIVACY_VERSION, STRAX_TERMS_VERSION } from "@/lib/legal";
 
 export function LeadWizard({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [consentError, setConsentError] = useState("");
 
-  function handleAnswer(answer: string) {
+  async function registerConsent() {
+    const response = await fetch("/api/consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        acceptedTermsVersion: STRAX_TERMS_VERSION,
+        acceptedPrivacyVersion: STRAX_PRIVACY_VERSION,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("No se pudo registrar el consentimiento legal.");
+    }
+  }
+
+  async function handleAnswer(answer: string) {
+    if (step === 0 && !consentAccepted) {
+      setConsentError("Debes aceptar términos y política de datos para iniciar.");
+      return;
+    }
+
+    if (step === 0) {
+      try {
+        await registerConsent();
+      } catch (error) {
+        setConsentError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo registrar el consentimiento.",
+        );
+        return;
+      }
+    }
+
+    setConsentError("");
     setAnswers((current) => [...current, answer]);
     setStep((current) => current + 1);
   }
@@ -39,7 +76,7 @@ export function LeadWizard({ onBack }: { onBack: () => void }) {
       );
     }
 
-    router.push("/fase-2");
+    router.push("/login?next=%2Ffase-2");
   }
 
   if (step >= questions.length) {
@@ -106,14 +143,6 @@ export function LeadWizard({ onBack }: { onBack: () => void }) {
             >
               Entrar a Fase 2 STRAX
             </button>
-            <a
-              href={GOOGLE_CALENDAR_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-white/15 px-6 py-3 font-semibold text-white transition hover:border-white/30 hover:bg-white/5 sm:w-auto"
-            >
-              Agendar sesion ejecutiva
-            </a>
           </div>
 
           <p className="mt-4 text-xs leading-5 text-slate-400">
@@ -129,11 +158,23 @@ export function LeadWizard({ onBack }: { onBack: () => void }) {
   const current = questions[step];
 
   return (
-    <WizardQuestionStep
-      current={current}
-      step={step}
-      onBack={onBack}
-      onAnswer={handleAnswer}
-    />
+    <div className="space-y-5">
+      {step === 0 ? (
+        <ConsentCheckbox
+          checked={consentAccepted}
+          onChange={(checked) => {
+            setConsentAccepted(checked);
+            setConsentError("");
+          }}
+          error={consentError}
+        />
+      ) : null}
+      <WizardQuestionStep
+        current={current}
+        step={step}
+        onBack={onBack}
+        onAnswer={handleAnswer}
+      />
+    </div>
   );
 }

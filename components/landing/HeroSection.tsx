@@ -50,21 +50,12 @@ export function HeroSection({
             </p>
 
             <h1 className="mt-8 max-w-4xl text-4xl font-semibold leading-tight tracking-[-0.05em] text-slate-950 sm:text-6xl lg:text-7xl">
-              Tu empresa esta creciendo...
-              <br className="hidden sm:block" />
-              pero cada mes pierdes dinero y no sabes donde.
+              Detecta donde se esta fugando la rentabilidad.
             </h1>
 
             <p className="mt-8 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
-              No es un problema comercial. Es un problema estructural.
-            </p>
-
-            <p className="mt-5 max-w-2xl text-base font-medium leading-7 text-slate-900 sm:text-lg">
-              Empresas en crecimiento pierden entre 5% y 20% de su margen por
-              problemas estructurales.
-              <br className="hidden sm:block" />
-              Si tu utilidad no crece al mismo ritmo que tus ventas, ya estas
-              pagando el problema.
+              STRAX lee procesos, decisiones, datos, tecnologia y dependencia
+              del fundador para encontrar el desorden que erosiona margen.
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
@@ -79,7 +70,7 @@ export function HeroSection({
                 }}
                 className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
               >
-                Diagnosticar mi empresa ahora
+                Iniciar diagnostico
               </button>
               <a
                 href="#problema"
@@ -92,7 +83,7 @@ export function HeroSection({
                 }
                 className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-7 py-4 text-base font-semibold text-slate-900 transition hover:border-slate-900 hover:bg-slate-100 sm:w-auto"
               >
-                Ver cuanto dinero estoy perdiendo hoy
+                Ver lectura estructural
               </a>
             </div>
 
@@ -101,40 +92,31 @@ export function HeroSection({
                 Sin costo inicial
               </span>
               <span className="rounded-full border border-slate-200 bg-white px-4 py-2">
-                Respuesta en menos de 2 minutos
+                Lectura en menos de 2 minutos
               </span>
               <span className="rounded-full border border-slate-200 bg-white px-4 py-2">
-                Diagnostico orientado a margen
+                Orientado a margen
               </span>
             </div>
 
-            <dl className="mt-12 grid gap-5 sm:grid-cols-3">
+            <dl className="mt-10 grid gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
                 <dt className="text-sm text-slate-500">Impacto frecuente</dt>
                 <dd className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
                   5% - 20%
                 </dd>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  de ingresos comprometidos por friccion operativa interna.
-                </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
                 <dt className="text-sm text-slate-500">Enfoque</dt>
                 <dd className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
                   Estructura
                 </dd>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  no mas actividad comercial ni mas reuniones sin causa.
-                </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
                 <dt className="text-sm text-slate-500">Resultado</dt>
                 <dd className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
                   Prioridades
                 </dd>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  claras para corregir lo que realmente afecta margen.
-                </p>
               </div>
             </dl>
           </div>

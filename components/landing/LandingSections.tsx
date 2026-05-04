@@ -398,8 +398,6 @@ export function LandingSections({
 
   const iiaValue = getMetricNumber(diagnosticResult?.IIA);
   const iraValue = getMetricNumber(diagnosticResult?.IRA);
-  const ceaValue = getMetricNumber(diagnosticResult?.CEA);
-  const founderValue = getMetricNumber(diagnosticResult?.founder);
   const mieValue = getMetricNumber(diagnosticResult?.MIE_percent);
   const revenueValue = getMetricNumber(
     diagnosticValues.economicInputs.revenue,

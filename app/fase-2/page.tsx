@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 
 type InitialDiagnosisSnapshot = {
   submittedAt?: string;
@@ -37,6 +40,27 @@ type DeepDiagnosticState = {
   priorityArea: string;
 };
 
+type AiAnalysis = {
+  executive_summary: string;
+  structural_hypothesis: string;
+  dominant_risk: string;
+  priority_actions: string[];
+  questions_to_validate: string[];
+  suggested_next_step: string;
+};
+
+type StraxEngineResponse = {
+  structured?: {
+    governance?: { founder_dependency?: string };
+    operations?: { process_definition?: string };
+  };
+  result?: {
+    IIA?: number | string;
+    IRA?: number | string;
+    MIE_percent?: number | string;
+  };
+};
+
 const initialDeepDiagnosticState: DeepDiagnosticState = {
   companyStage: "expansion",
   annualRevenueRange: "not_shared",
@@ -53,6 +77,44 @@ const initialDeepDiagnosticState: DeepDiagnosticState = {
   structuralSymptoms: "",
   priorityArea: "",
 };
+
+const transformationPlanPhases = [
+  {
+    label: "FASE 2 — ARQUITECTURA OBJETIVO",
+    text: "Diseñar cómo debe funcionar la empresa después del diagnóstico.",
+    items: [
+      "estructura objetivo",
+      "gobierno y roles",
+      "flujo operativo ideal",
+      "modelo de datos",
+      "criterios tecnológicos",
+      "prioridades críticas",
+    ],
+  },
+  {
+    label: "FASE 3 — PLAN DE INTEGRACIÓN",
+    text: "Convertir la arquitectura en una ruta ejecutable.",
+    items: [
+      "roadmap 0–90 días",
+      "prioridades por impacto",
+      "procesos a documentar",
+      "responsables",
+      "indicadores",
+      "decisiones tecnológicas",
+    ],
+  },
+  {
+    label: "FASE 4 — CONTROL Y EVOLUCIÓN",
+    text: "Asegurar que la transformación no se quede en papel.",
+    items: [
+      "KPIs de seguimiento",
+      "control de avance",
+      "revisión de madurez",
+      "trazabilidad",
+      "estabilización operativa",
+    ],
+  },
+];
 
 function readStoredDiagnosis() {
   if (typeof window === "undefined") {
@@ -127,6 +189,7 @@ function buildStructuralHypothesis(snapshot: InitialDiagnosisSnapshot | null) {
 }
 
 export default function FaseDosPage() {
+  const router = useRouter();
   const [storedDiagnosis, setStoredDiagnosis] =
     useState<InitialDiagnosisSnapshot | null>(null);
   const [formState, setFormState] = useState<DeepDiagnosticState>(
@@ -136,6 +199,11 @@ export default function FaseDosPage() {
   const [isSubmittingBrief, setIsSubmittingBrief] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
+  const [aiAnalysis, setAiAnalysis] = useState<AiAnalysis | null>(null);
+  const [straxEngineResponse, setStraxEngineResponse] =
+    useState<StraxEngineResponse | null>(null);
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState("");
 
   useEffect(() => {
     setStoredDiagnosis(readStoredDiagnosis());
@@ -145,6 +213,43 @@ export default function FaseDosPage() {
   const iiaValue = getMetricNumber(storedDiagnosis?.result?.IIA);
   const iraValue = getMetricNumber(storedDiagnosis?.result?.IRA);
   const structuralHypothesis = buildStructuralHypothesis(storedDiagnosis);
+  const workspaceHref = useMemo(() => {
+    const params = new URLSearchParams();
+    const engineResult = straxEngineResponse?.result;
+    const structured = straxEngineResponse?.structured;
+    const workspaceIia = getMetricNumber(engineResult?.IIA);
+    const workspaceIra = getMetricNumber(engineResult?.IRA);
+    const workspaceMie = getMetricNumber(engineResult?.MIE_percent);
+
+    if (workspaceIia !== null) {
+      params.set("iia", String(workspaceIia));
+    }
+
+    if (workspaceIra !== null) {
+      params.set("ira", String(workspaceIra));
+    }
+
+    if (workspaceMie !== null) {
+      params.set("mie", String(workspaceMie));
+    }
+
+    if (structured?.governance?.founder_dependency) {
+      params.set("founder_dependency", structured.governance.founder_dependency);
+    }
+
+    if (structured?.operations?.process_definition) {
+      params.set("process_level", structured.operations.process_definition);
+    }
+
+    const query = params.toString();
+
+    return query ? `/workspace/demo-client?${query}` : "/workspace/demo-client";
+  }, [straxEngineResponse]);
+  const workspaceSessionHref = useMemo(() => {
+    const [path, query] = workspaceHref.split("?");
+
+    return query ? `${path}/intervention?${query}` : `${path}/intervention`;
+  }, [workspaceHref]);
 
   const gptBrief = useMemo(() => {
     return {
@@ -182,11 +287,159 @@ export default function FaseDosPage() {
     }));
   }
 
+  async function handleRequestArchitecture() {
+    if (!straxEngineResponse) {
+      router.push(workspaceSessionHref);
+      return;
+    }
+
+    if (!isSupabaseConfigured || !supabase) {
+      setWorkspaceError(
+        "Supabase no esta configurado. Te llevamos al workspace demo.",
+      );
+      router.push(workspaceSessionHref);
+      return;
+    }
+
+    setIsCreatingWorkspace(true);
+    setWorkspaceError("");
+
+    const result = straxEngineResponse.result;
+    const structured = straxEngineResponse.structured;
+    const iia = getMetricNumber(result?.IIA);
+    const ira = getMetricNumber(result?.IRA);
+    const mie = getMetricNumber(result?.MIE_percent);
+    const founderDependency =
+      structured?.governance?.founder_dependency ?? null;
+    const processLevel = structured?.operations?.process_definition ?? null;
+
+    try {
+      const { data: client, error: clientError } = await supabase
+        .from("clients")
+        .insert({
+          name: `Cliente STRAX ${new Date().toLocaleDateString("es-CO")}`,
+          industry: "Sin clasificar",
+          status: "Arquitectura solicitada",
+        })
+        .select("id")
+        .single();
+
+      if (clientError || !client) {
+        throw new Error(
+          clientError?.message ?? "No se pudo crear el cliente en Supabase.",
+        );
+      }
+
+      const clientId = client.id as string;
+
+      const inserts = await Promise.all([
+        supabase.from("assessments").insert({
+          client_id: clientId,
+          iia,
+          ira,
+          mie_percent: mie,
+          founder_dependency: founderDependency,
+          process_level: processLevel,
+          raw_result: {
+            source: "fase_2_architecture_request",
+            structured,
+            result,
+            brief: gptBrief,
+          },
+        }),
+        supabase.from("roadmap_items").insert([
+          {
+            client_id: clientId,
+            phase: "Fase 1 Diagnóstico",
+            title: "Validar lectura estructural",
+            description:
+              "Confirmar los hallazgos principales del diagnóstico STRAX.",
+            status: "done",
+            priority: "high",
+          },
+          {
+            client_id: clientId,
+            phase: "Fase 2 Arquitectura",
+            title: "Diseñar arquitectura objetivo",
+            description:
+              "Definir estructura objetivo, roles, gobierno y flujo operativo ideal.",
+            status: "in_progress",
+            priority: "critical",
+          },
+          {
+            client_id: clientId,
+            phase: "Fase 3 Integración",
+            title: "Construir roadmap 0-90 días",
+            description:
+              "Convertir la arquitectura en una ruta ejecutable por impacto.",
+            status: "pending",
+            priority: "high",
+          },
+          {
+            client_id: clientId,
+            phase: "Fase 4 Control",
+            title: "Definir control y evolución",
+            description:
+              "Crear KPIs, seguimiento y revisión de madurez operativa.",
+            status: "pending",
+            priority: "medium",
+          },
+        ]),
+        supabase.from("sessions").insert({
+          client_id: clientId,
+          session_type: "Arquitectura Objetivo",
+          session_date: new Date(
+            Date.now() + 2 * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+          status: "scheduled",
+          notes:
+            "Sesión para convertir diagnóstico en arquitectura objetivo.",
+        }),
+        supabase.from("decisions").insert({
+          client_id: clientId,
+          title: "Separar decisiones operativas de decisiones estratégicas",
+          description:
+            "Reducir carga del fundador y ordenar gobernanza semanal.",
+          impact: "Alto",
+        }),
+        supabase.from("risks").insert({
+          client_id: clientId,
+          title:
+            founderDependency === "high"
+              ? "Dependencia crítica del fundador"
+              : "Fricción estructural pendiente de validar",
+          severity: founderDependency === "high" ? "critical" : "high",
+          impact:
+            "Riesgo de cuello de botella en ejecución, control y margen.",
+          status: "open",
+        }),
+      ]);
+
+      const firstError = inserts.map((insert) => insert.error).find(Boolean);
+
+      if (firstError) {
+        throw new Error(firstError.message);
+      }
+
+      router.push(`/workspace/${clientId}/intervention`);
+    } catch (error) {
+      setWorkspaceError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo crear el workspace STRAX.",
+      );
+    } finally {
+      setIsCreatingWorkspace(false);
+    }
+  }
+
   async function handlePrepareBrief() {
     setIsBriefReady(true);
     setIsSubmittingBrief(true);
     setSubmitError("");
     setSubmitMessage("");
+    setAiAnalysis(null);
+    setStraxEngineResponse(null);
 
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem(
@@ -197,29 +450,87 @@ export default function FaseDosPage() {
 
     console.log("strax fase 2 brief", gptBrief);
 
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 45000);
+
     try {
-      const response = await fetch("/api/fase-2", {
+      console.log("calling STRAX backend...");
+
+      const response = await fetch("http://localhost:3001/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(gptBrief),
+        body: JSON.stringify({
+          text: [
+            gptBrief.operator_prompt,
+            "",
+            "Contexto STRAX capturado:",
+            JSON.stringify(gptBrief, null, 2),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        }),
+        signal: controller.signal,
       });
 
-      const data = (await response.json()) as {
+      console.log("STRAX backend responded");
+
+      const responseText = await response.text();
+      let data: {
         ok?: boolean;
         mode?: string;
         message?: string;
-      };
+        analysis?: AiAnalysis;
+        upstreamBody?: StraxEngineResponse;
+        structured?: StraxEngineResponse["structured"];
+        result?: StraxEngineResponse["result"];
+        error?: string;
+      } = {};
 
-      if (!response.ok || !data.ok) {
-        throw new Error(data.message ?? "No se pudo preparar la Fase 2.");
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        data = {
+          error: responseText || "STRAX phase 2 API returned a non-JSON response.",
+        };
       }
 
-      if (data.mode === "upstream_forwarded") {
-        setSubmitMessage(
-          "La Fase 2 fue enviada al servicio aguas abajo. Ya puedes conectar esta salida con GPT.",
+      if (!response.ok) {
+        console.warn("STRAX backend error", {
+          status: response.status,
+          body: data,
+        });
+
+        throw new Error(
+          data.message ??
+            data.error ??
+            `STRAX backend respondio con estado ${response.status}.`,
         );
+      }
+
+      if (data.ok === false) {
+        console.warn("STRAX backend rejected request", data);
+
+        throw new Error(
+          data.message ?? data.error ?? "STRAX backend rechazo la solicitud.",
+        );
+      }
+
+      if (data.upstreamBody || data.structured || data.result) {
+        setStraxEngineResponse(
+          data.upstreamBody ?? {
+            structured: data.structured,
+            result: data.result,
+          },
+        );
+        setSubmitMessage(
+          "Lectura STRAX generada correctamente. Ya tienes una primera lectura estructural para revisar.",
+        );
+      } else if (data.mode === "openai_analysis" && data.analysis) {
+        setStraxEngineResponse(null);
+        setAiAnalysis(data.analysis);
+        setSubmitMessage(data.message ?? "Analisis STRAX generado con IA.");
       } else {
         setSubmitMessage(
           data.message ??
@@ -227,12 +538,21 @@ export default function FaseDosPage() {
         );
       }
     } catch (error) {
+      console.warn("STRAX backend request failed", error);
+
       setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo preparar la salida de Fase 2.",
+        error instanceof DOMException && error.name === "AbortError"
+          ? "STRAX backend no respondio en 45 segundos. Verifica que extract-system este corriendo en localhost:3001 y que el analisis no se haya quedado procesando."
+          : error instanceof SyntaxError
+            ? "STRAX backend respondio, pero la respuesta no es JSON valido."
+            : error instanceof TypeError
+              ? "No se pudo conectar con STRAX backend. Verifica que extract-system este activo en localhost:3001 y permita CORS."
+              : error instanceof Error
+                ? error.message
+                : "No se pudo preparar la salida de Fase 2.",
       );
     } finally {
+      window.clearTimeout(timeoutId);
       setIsSubmittingBrief(false);
     }
   }
@@ -668,12 +988,12 @@ export default function FaseDosPage() {
                 {isBriefReady ? (
                   <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
                     <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-200">
-                      Brief listo
+                      Lectura lista
                     </p>
                     <p className="mt-3 text-sm leading-6 text-slate-300">
-                      Guardamos el contexto en `sessionStorage` bajo la clave
-                      `strax-fase-2-brief` y tambien lo enviamos a consola para
-                      conectar luego la siguiente etapa con GPT.
+                      Consolidamos el contexto de esta fase y lo convertimos en
+                      una lectura inicial para revisar estructura, riesgo y
+                      prioridad de accion.
                     </p>
                     {submitMessage ? (
                       <p className="mt-3 text-sm leading-6 text-blue-100">
@@ -685,6 +1005,170 @@ export default function FaseDosPage() {
                         {submitError}
                       </p>
                     ) : null}
+                    {straxEngineResponse ? (
+                      <div className="mt-5 rounded-[1.25rem] border border-emerald-300/20 bg-emerald-300/10 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100">
+                          Lectura estructural
+                        </p>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                              IIA
+                            </p>
+                            <p className="mt-2 text-3xl font-semibold text-white">
+                              {getMetricNumber(straxEngineResponse.result?.IIA) ?? "--"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                              IRA
+                            </p>
+                            <p className="mt-2 text-3xl font-semibold text-white">
+                              {getMetricNumber(straxEngineResponse.result?.IRA) ?? "--"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                              MIE
+                            </p>
+                            <p className="mt-2 text-3xl font-semibold text-white">
+                              {getMetricNumber(straxEngineResponse.result?.MIE_percent) ?? 0}%
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 space-y-2 text-sm leading-6 text-slate-200">
+                          <p>
+                            <span className="font-semibold text-white">
+                              Dependencia del fundador:
+                            </span>{" "}
+                            {straxEngineResponse.structured?.governance
+                              ?.founder_dependency ?? "sin dato"}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-white">
+                              Definicion de procesos:
+                            </span>{" "}
+                            {straxEngineResponse.structured?.operations
+                              ?.process_definition ?? "sin dato"}
+                          </p>
+                        </div>
+
+                        <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-950/60 p-5 shadow-[0_24px_80px_-55px_rgba(15,23,42,0.9)]">
+                          <div className="max-w-3xl">
+                            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-100">
+                              PLAN DE TRANSFORMACIÓN STRAX
+                            </p>
+                            <h3 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
+                              Del diagnóstico al rediseño estructural de la
+                              empresa.
+                            </h3>
+                          </div>
+
+                          <div className="mt-5 grid gap-4 xl:grid-cols-3">
+                            {transformationPlanPhases.map((phase) => (
+                              <article
+                                key={phase.label}
+                                className="rounded-[1.25rem] border border-white/10 bg-white/6 p-4"
+                              >
+                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">
+                                  {phase.label}
+                                </p>
+                                <p className="mt-3 text-sm leading-6 text-slate-200">
+                                  {phase.text}
+                                </p>
+                                <div className="mt-4 space-y-2 text-sm leading-6 text-slate-300">
+                                  {phase.items.map((item) => (
+                                    <p key={item}>&bull; {item}</p>
+                                  ))}
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+
+                          <div className="mt-5 rounded-[1.25rem] border border-blue-300/20 bg-blue-400/10 p-4">
+                            <p className="text-base font-semibold leading-7 text-white">
+                              El diagnóstico muestra dónde está la fractura.
+                              <br />
+                              El plan STRAX define cómo se corrige.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleRequestArchitecture}
+                              disabled={isCreatingWorkspace}
+                              className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+                            >
+                              {isCreatingWorkspace
+                                ? "Creando workspace STRAX..."
+                                : "Solicitar arquitectura STRAX"}
+                            </button>
+                            {workspaceError ? (
+                              <p className="mt-3 text-sm leading-6 text-red-100">
+                                {workspaceError}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {aiAnalysis ? (
+                  <div className="mt-6 rounded-[1.5rem] border border-blue-300/20 bg-blue-400/10 p-5">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-100">
+                      Analista IA STRAX
+                    </p>
+                    <h3 className="mt-4 text-2xl font-semibold text-white">
+                      Lectura ejecutiva generada
+                    </h3>
+                    <div className="mt-4 space-y-4 text-base leading-7 text-slate-200">
+                      <p>{aiAnalysis.executive_summary}</p>
+                      <p>
+                        <span className="font-semibold text-white">
+                          Hipotesis estructural:
+                        </span>{" "}
+                        {aiAnalysis.structural_hypothesis}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-white">
+                          Riesgo dominante:
+                        </span>{" "}
+                        {aiAnalysis.dominant_risk}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-blue-100">
+                          Prioridades
+                        </p>
+                        <div className="mt-3 space-y-2 text-sm leading-6 text-slate-200">
+                          {aiAnalysis.priority_actions.map((item) => (
+                            <p key={item}>&bull; {item}</p>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-blue-100">
+                          Validaciones sugeridas
+                        </p>
+                        <div className="mt-3 space-y-2 text-sm leading-6 text-slate-200">
+                          {aiAnalysis.questions_to_validate.map((item) => (
+                            <p key={item}>&bull; {item}</p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 rounded-[1.25rem] border border-white/10 bg-slate-950/35 p-4">
+                      <p className="text-sm font-semibold uppercase tracking-[0.22em] text-blue-100">
+                        Siguiente paso recomendado
+                      </p>
+                      <p className="mt-3 text-base leading-7 text-white">
+                        {aiAnalysis.suggested_next_step}
+                      </p>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -695,3 +1179,10 @@ export default function FaseDosPage() {
     </main>
   );
 }
+
+
+
+
+
+
+

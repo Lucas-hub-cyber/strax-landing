@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   getRadarInterpretation,
@@ -25,6 +25,18 @@ export default function Home() {
   function closeWizard() {
     setShowWizard(false);
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: "auto" });
+
+    if (showWizard && window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [showWizard]);
 
   if (showWizard) {
     return (

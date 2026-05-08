@@ -49,11 +49,14 @@ export function WorkspaceIdentity({
           </div>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-200">
-              {context}
+              Cliente actual
             </p>
             <h1 className="mt-2 break-words text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
               {clientName}
             </h1>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              {context}
+            </p>
             {clientDetail ? (
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
                 {clientDetail}
@@ -76,7 +79,7 @@ export function WorkspaceIdentity({
           )}
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Acompanamiento
+              Usuario interno
             </p>
             <p className="mt-1 truncate text-sm font-semibold text-white">
               {architectName}

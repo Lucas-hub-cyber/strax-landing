@@ -760,9 +760,10 @@ function buildGeneratedIntervention(state: InterventionState): GeneratedInterven
 export default function InterventionPage() {
   const params = useParams<{ client: string }>();
   const clientId = params.client ?? "demo-client";
-  const clientName =
+  const fallbackClientName =
     clientId === "demo-client" ? "Cliente Demo STRAX" : `Cliente ${clientId.slice(0, 8)}`;
   const storageKey = useMemo(() => `strax-intervention:${clientId}`, [clientId]);
+  const [clientName, setClientName] = useState(fallbackClientName);
   const [state, setState] = useState<InterventionState>(initialState);
   const [newFinding, setNewFinding] = useState<Finding>({
     id: "",
@@ -796,6 +797,34 @@ export default function InterventionPage() {
   const [isListening, setIsListening] = useState(false);
   const [voiceMessage, setVoiceMessage] = useState("");
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setClientName(fallbackClientName);
+
+    async function loadClientName() {
+      if (!isSupabaseConfigured || !supabase || clientId === "demo-client") {
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("clients")
+        .select("name")
+        .eq("id", clientId)
+        .maybeSingle<{ name: string }>();
+
+      if (!cancelled && !error && data?.name) {
+        setClientName(data.name);
+      }
+    }
+
+    void loadClientName();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, fallbackClientName]);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,5 +1,20 @@
 import Link from "next/link";
 
+import {
+  CriticalAlert,
+  DashboardFrame,
+  EconomicImpact,
+  FounderModule,
+  MetricCards,
+  Recommendations,
+  StructuralRadar,
+  type CriticalAlertData,
+  type EconomicImpactData,
+  type FounderData,
+  type MetricCardData,
+  type RecommendationData,
+  type StructuralLayer,
+} from "@/components/workspace/DashboardShell";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 import type {
   Assessment,
@@ -14,7 +29,6 @@ import {
   ContinueArchitectureButton,
   NewSessionButton,
 } from "./WorkspaceActions";
-import { WorkspaceIdentity } from "@/components/workspace/WorkspaceIdentity";
 
 type WorkspaceData = {
   client: Client | null;
@@ -34,6 +48,15 @@ type WorkspaceSearchParams = {
   process_level?: string | string[];
 };
 
+type DashboardModel = {
+  metrics: MetricCardData[];
+  layers: StructuralLayer[];
+  alert: CriticalAlertData;
+  founder: FounderData;
+  economicImpact: EconomicImpactData;
+  recommendation: RecommendationData;
+};
+
 const demoClient: Client = {
   id: "demo-client",
   name: "Cliente Demo STRAX",
@@ -45,22 +68,36 @@ const demoClient: Client = {
 const demoAssessment: Assessment = {
   id: "assessment-demo",
   client_id: demoClient.id,
-  iia: 58,
-  ira: 74,
-  mie_percent: 16,
+  iia: 62,
+  ira: 71,
+  mie_percent: 8.4,
   founder_dependency: "high",
   process_level: "partial",
-  raw_result: null,
-  created_at: "2026-04-28T15:00:00.000Z",
+  raw_result: {
+    result: {
+      layers: {
+        strategy: 72,
+        governance: 65,
+        operations: 70,
+        data: 38,
+        technology: 80,
+      },
+      founder: 58,
+      CEA: 126000000,
+      MIE_percent: 8.4,
+    },
+  },
+  created_at: "2026-05-02T15:00:00.000Z",
 };
 
 const demoRoadmapItems: RoadmapItem[] = [
   {
     id: "roadmap-1",
     client_id: demoClient.id,
-    phase: "Fase 1 Diagnóstico",
+    phase: "Fase 1 Diagnostico",
     title: "Validar fractura estructural principal",
-    description: "Contrastar dependencia del fundador, control operativo y calidad de datos.",
+    description:
+      "Contrastar dependencia del fundador, control operativo y calidad de datos.",
     status: "done",
     priority: "high",
     created_at: "2026-04-28T15:05:00.000Z",
@@ -70,7 +107,8 @@ const demoRoadmapItems: RoadmapItem[] = [
     client_id: demoClient.id,
     phase: "Fase 2 Arquitectura",
     title: "Definir arquitectura objetivo",
-    description: "Diseñar gobierno, roles, flujo operativo ideal y modelo de datos.",
+    description:
+      "Disenar gobierno, roles, flujo operativo ideal y modelo de datos.",
     status: "in_progress",
     priority: "critical",
     created_at: "2026-04-28T15:10:00.000Z",
@@ -78,22 +116,12 @@ const demoRoadmapItems: RoadmapItem[] = [
   {
     id: "roadmap-3",
     client_id: demoClient.id,
-    phase: "Fase 3 Integración",
-    title: "Construir roadmap 0-90 días",
-    description: "Ordenar prioridades por impacto y responsables de implementación.",
+    phase: "Fase 3 Integracion",
+    title: "Construir roadmap 0-90 dias",
+    description: "Ordenar prioridades por impacto y responsables.",
     status: "pending",
     priority: "high",
     created_at: "2026-04-28T15:15:00.000Z",
-  },
-  {
-    id: "roadmap-4",
-    client_id: demoClient.id,
-    phase: "Fase 4 Control",
-    title: "Diseñar tablero de seguimiento",
-    description: "Definir KPIs, control de avance y revisión de madurez.",
-    status: "pending",
-    priority: "medium",
-    created_at: "2026-04-28T15:20:00.000Z",
   },
 ];
 
@@ -102,9 +130,9 @@ const demoSessions: Session[] = [
     id: "session-1",
     client_id: demoClient.id,
     session_type: "Lectura estructural",
-    session_date: "2026-04-29T15:00:00.000Z",
+    session_date: "2026-05-02T15:00:00.000Z",
     status: "scheduled",
-    notes: "Revisar hipótesis y priorizar arquitectura objetivo.",
+    notes: "Revisar hipotesis y priorizar arquitectura objetivo.",
     created_at: "2026-04-28T15:30:00.000Z",
   },
 ];
@@ -113,7 +141,7 @@ const demoDecisions: Decision[] = [
   {
     id: "decision-1",
     client_id: demoClient.id,
-    title: "Separar decisiones operativas de decisiones estratégicas",
+    title: "Separar decisiones operativas de decisiones estrategicas",
     description: "Reducir carga del fundador y ordenar gobernanza semanal.",
     impact: "Alto",
     created_at: "2026-04-28T15:35:00.000Z",
@@ -124,20 +152,17 @@ const demoRisks: Risk[] = [
   {
     id: "risk-1",
     client_id: demoClient.id,
-    title: "Dependencia crítica del fundador",
+    title: "Dependencia critica del fundador",
     severity: "critical",
-    impact: "Riesgo de cuello de botella en ejecución y margen.",
+    impact: "Riesgo de cuello de botella en ejecucion y margen.",
     status: "open",
     created_at: "2026-04-28T15:40:00.000Z",
   },
 ];
 
-const roadmapPhases = [
-  "Fase 1 Diagnóstico",
-  "Fase 2 Arquitectura",
-  "Fase 3 Integración",
-  "Fase 4 Control",
-];
+function clamp(value: number, min = 0, max = 100) {
+  return Math.min(Math.max(value, min), max);
+}
 
 function getFirstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -155,6 +180,40 @@ function getNumberParam(value: string | string[] | undefined) {
   return Number.isFinite(parsedValue) ? parsedValue : null;
 }
 
+function getRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function getNumber(value: unknown, fallback = 0) {
+  const numericValue = Number(value);
+
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return "Sin fecha";
+  }
+
+  return new Intl.DateTimeFormat("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 function getDemoWorkspaceData(
   searchParams: WorkspaceSearchParams = {},
 ): WorkspaceData {
@@ -163,21 +222,18 @@ function getDemoWorkspaceData(
   const mie = getNumberParam(searchParams.mie);
   const founderDependency = getFirstParam(searchParams.founder_dependency);
   const processLevel = getFirstParam(searchParams.process_level);
-  const latestAssessment = {
-    ...demoAssessment,
-    iia: iia ?? demoAssessment.iia,
-    ira: ira ?? demoAssessment.ira,
-    mie_percent: mie ?? demoAssessment.mie_percent,
-    founder_dependency:
-      founderDependency ?? demoAssessment.founder_dependency,
-    process_level: processLevel ?? demoAssessment.process_level,
-    raw_result: searchParams,
-    created_at: new Date().toISOString(),
-  };
 
   return {
     client: demoClient,
-    latestAssessment,
+    latestAssessment: {
+      ...demoAssessment,
+      iia: iia ?? demoAssessment.iia,
+      ira: ira ?? demoAssessment.ira,
+      mie_percent: mie ?? demoAssessment.mie_percent,
+      founder_dependency:
+        founderDependency ?? demoAssessment.founder_dependency,
+      process_level: processLevel ?? demoAssessment.process_level,
+    },
     roadmapItems: demoRoadmapItems,
     sessions: demoSessions,
     decisions: demoDecisions,
@@ -202,7 +258,7 @@ async function getWorkspaceData(
       decisions: [],
       risks: [],
       error:
-        "Supabase no está configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para cargar clientes reales.",
+        "Supabase no esta configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para cargar clientes reales.",
     };
   }
 
@@ -212,7 +268,7 @@ async function getWorkspaceData(
     .eq("id", clientId)
     .maybeSingle<Client>();
 
-  if (clientError) {
+  if (clientError || !client) {
     return {
       client: null,
       latestAssessment: null,
@@ -220,121 +276,306 @@ async function getWorkspaceData(
       sessions: [],
       decisions: [],
       risks: [],
-      error: `No se pudo cargar el cliente: ${clientError.message}`,
+      error: clientError?.message ?? "Cliente no encontrado.",
     };
   }
 
-  if (!client) {
-    return {
-      client: null,
-      latestAssessment: null,
-      roadmapItems: [],
-      sessions: [],
-      decisions: [],
-      risks: [],
-    };
-  }
+  const [
+    assessmentResult,
+    roadmapResult,
+    sessionsResult,
+    decisionsResult,
+    risksResult,
+  ] = await Promise.all([
+    supabase
+      .from("assessments")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<Assessment>(),
+    supabase
+      .from("roadmap_items")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("sessions")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("session_date", { ascending: false }),
+    supabase
+      .from("decisions")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("risks")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  try {
-    const [
-      assessmentResult,
-      roadmapResult,
-      sessionsResult,
-      decisionsResult,
-      risksResult,
-    ] = await Promise.all([
-      supabase
-        .from("assessments")
-        .select("*")
-        .eq("client_id", client.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle<Assessment>(),
-      supabase
-        .from("roadmap_items")
-        .select("*")
-        .eq("client_id", client.id)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("sessions")
-        .select("*")
-        .eq("client_id", client.id)
-        .order("session_date", { ascending: false }),
-      supabase
-        .from("decisions")
-        .select("*")
-        .eq("client_id", client.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("risks")
-        .select("*")
-        .eq("client_id", client.id)
-        .order("created_at", { ascending: false }),
-    ]);
+  const firstError =
+    assessmentResult.error ??
+    roadmapResult.error ??
+    sessionsResult.error ??
+    decisionsResult.error ??
+    risksResult.error;
 
-    const firstError =
-      assessmentResult.error ??
-      roadmapResult.error ??
-      sessionsResult.error ??
-      decisionsResult.error ??
-      risksResult.error;
-
-    return {
-      client,
-      latestAssessment: assessmentResult.data ?? null,
-      roadmapItems: (roadmapResult.data ?? []) as RoadmapItem[],
-      sessions: (sessionsResult.data ?? []) as Session[],
-      decisions: (decisionsResult.data ?? []) as Decision[],
-      risks: (risksResult.data ?? []) as Risk[],
-      error: firstError
-        ? `Algunos datos no se pudieron cargar: ${firstError.message}`
-        : undefined,
-    };
-  } catch (error) {
-    return {
-      client,
-      latestAssessment: null,
-      roadmapItems: [],
-      sessions: [],
-      decisions: [],
-      risks: [],
-      error:
-        error instanceof Error
-          ? error.message
-          : "Supabase falló al cargar el workspace.",
-    };
-  }
+  return {
+    client,
+    latestAssessment: assessmentResult.data ?? null,
+    roadmapItems: (roadmapResult.data ?? []) as RoadmapItem[],
+    sessions: (sessionsResult.data ?? []) as Session[],
+    decisions: (decisionsResult.data ?? []) as Decision[],
+    risks: (risksResult.data ?? []) as Risk[],
+    error: firstError
+      ? `Algunos datos no se pudieron cargar: ${firstError.message}`
+      : undefined,
+  };
 }
 
-function formatDate(value: string | null | undefined) {
-  if (!value) {
-    return "Sin fecha";
-  }
-
-  return new Intl.DateTimeFormat("es-CO", {
-    dateStyle: "medium",
-  }).format(new Date(value));
+function getRawResult(assessment: Assessment | null) {
+  const raw = getRecord(assessment?.raw_result);
+  return getRecord(raw.result).IIA !== undefined ? getRecord(raw.result) : raw;
 }
 
-function getStatusTone(status: string) {
-  const normalized = status.toLowerCase();
-
-  if (["done", "completed", "closed"].includes(normalized)) {
-    return "border-emerald-300/20 bg-emerald-300/10 text-emerald-100";
-  }
-
-  if (["in_progress", "active", "scheduled"].includes(normalized)) {
-    return "border-blue-300/20 bg-blue-400/10 text-blue-100";
-  }
-
-  return "border-white/10 bg-white/5 text-slate-300";
+function getLayerScore(
+  layers: Record<string, unknown>,
+  key: string,
+  fallback: number,
+) {
+  return clamp(Math.round(getNumber(layers[key], fallback)));
 }
 
-function EmptyState({ label }: { label: string }) {
+function buildLayerFallbacks(assessment: Assessment | null) {
+  const iia = getNumber(assessment?.iia, 62);
+  const mie = getNumber(assessment?.mie_percent, 8.4);
+  const founderDependency = assessment?.founder_dependency;
+  const processLevel = assessment?.process_level;
+
+  return {
+    strategy: clamp(iia + 10),
+    governance:
+      founderDependency === "high"
+        ? 48
+        : founderDependency === "medium"
+          ? 64
+          : 78,
+    operations:
+      processLevel === "none" ? 42 : processLevel === "partial" ? 63 : 78,
+    data: mie >= 15 ? 38 : mie >= 8 ? 52 : 72,
+    technology: processLevel === "defined" ? 80 : 68,
+  };
+}
+
+function buildDashboardModel(assessment: Assessment | null): DashboardModel {
+  const result = getRawResult(assessment);
+  const resultLayers = getRecord(result.layers);
+  const fallbacks = buildLayerFallbacks(assessment);
+  const iia = Math.round(getNumber(result.IIA, getNumber(assessment?.iia, 0)));
+  const ira = Math.round(getNumber(result.IRA, getNumber(assessment?.ira, 0)));
+  const mie = getNumber(
+    result.MIE_percent,
+    getNumber(assessment?.mie_percent, 0),
+  );
+  const annualLoss = getNumber(result.CEA, 0) || 126000000;
+  const revenue = mie > 0 ? annualLoss / (mie / 100) : 1500000000;
+  const founderValue = Math.round(
+    getNumber(
+      result.founder,
+      assessment?.founder_dependency === "high"
+        ? 58
+        : assessment?.founder_dependency === "medium"
+          ? 70
+          : 82,
+    ),
+  );
+  const layers: StructuralLayer[] = [
+    {
+      key: "strategy",
+      label: "Estrategia",
+      value: getLayerScore(resultLayers, "strategy", fallbacks.strategy),
+    },
+    {
+      key: "governance",
+      label: "Gobierno",
+      value: getLayerScore(resultLayers, "governance", fallbacks.governance),
+    },
+    {
+      key: "operations",
+      label: "Operacion",
+      value: getLayerScore(resultLayers, "operations", fallbacks.operations),
+    },
+    {
+      key: "data",
+      label: "Datos",
+      value: getLayerScore(resultLayers, "data", fallbacks.data),
+    },
+    {
+      key: "technology",
+      label: "Tecnologia",
+      value: getLayerScore(resultLayers, "technology", fallbacks.technology),
+    },
+  ];
+  const weakestLayer = [...layers].sort((a, b) => a.value - b.value)[0];
+  const founderStatus =
+    founderValue >= 76 ? "Estable" : founderValue >= 56 ? "Condicional" : "Critico";
+
+  return {
+    metrics: [
+      {
+        label: "IIA",
+        title: "Indice de Integridad Arquitectonica",
+        value: iia ? String(iia) : "N/A",
+        detail: iia >= 76 ? "Estable" : iia >= 56 ? "Inestable" : "Critico",
+        tone: iia >= 76 ? "green" : iia >= 56 ? "yellow" : "red",
+      },
+      {
+        label: "IRA",
+        title: "Indice de Riesgo Arquitectonico",
+        value: ira ? String(ira) : "N/A",
+        detail: ira >= 70 ? "Riesgo alto" : ira >= 50 ? "Riesgo medio" : "Riesgo bajo",
+        tone: ira >= 70 ? "red" : ira >= 50 ? "yellow" : "green",
+      },
+      {
+        label: "MIE",
+        title: "Margen Invisible Estructural",
+        value: `${mie.toFixed(1)}%`,
+        detail: "Fuga estimada",
+        tone: mie >= 10 ? "red" : mie >= 5 ? "yellow" : "green",
+        footer: `${formatMoney(annualLoss)} / ano`,
+      },
+    ],
+    layers,
+    alert: {
+      layer: weakestLayer,
+      iiaImpact: `-${Math.max(4, 76 - weakestLayer.value)} puntos`,
+      iraImpact: `+${Math.max(6, 100 - weakestLayer.value)} puntos`,
+      economicImpact: formatMoney(annualLoss),
+    },
+    founder: {
+      value: founderValue,
+      status: founderStatus,
+      risks:
+        assessment?.founder_dependency === "high"
+          ? [
+              "Alta centralizacion",
+              "Baja delegacion estructurada",
+              "Decisiones no trazables",
+            ]
+          : [
+              "Delegacion parcial",
+              "Gobierno dependiente de rutina",
+              "Riesgo de escalamiento informal",
+            ],
+    },
+    economicImpact: {
+      revenue: formatMoney(revenue),
+      annualLoss: formatMoney(annualLoss),
+      causes: [
+        weakestLayer.label === "Datos" ? "Mala calidad de datos" : "Retrabajo operativo",
+        "Decisiones no trazables",
+        "Dependencia del fundador",
+      ],
+    },
+    recommendation: {
+      actions: [
+        "Redisenar arquitectura de datos",
+        "Definir gobierno de informacion",
+        "Separar decisiones operativas y estrategicas",
+      ],
+      projectedIia: `+${Math.max(12, 82 - iia)} puntos`,
+      projectedIra: `-${Math.max(14, ira - 42)} puntos`,
+      recovery: `+${Math.max(4, Math.round(mie * 0.65))}%`,
+    },
+  };
+}
+
+function RoadmapSummary({ items }: { items: RoadmapItem[] }) {
+  const topItems = items.slice(0, 4);
+
   return (
-    <div className="rounded-[1.25rem] border border-dashed border-white/15 bg-white/5 p-5 text-sm leading-6 text-slate-400">
-      {label}
-    </div>
+    <section className="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+      <p className="text-sm font-semibold text-white">Siguiente paso</p>
+      <div className="mt-4 space-y-3">
+        {topItems.length ? (
+          topItems.map((item) => (
+            <div key={item.id} className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
+              <p className="text-sm font-semibold text-white/88">{item.title}</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-white/45">
+                {item.phase} | {item.status}
+              </p>
+            </div>
+          ))
+        ) : (
+          <p className="text-sm text-white/55">
+            Sin roadmap registrado para este cliente.
+          </p>
+        )}
+      </div>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <ContinueArchitectureButton />
+        <NewSessionButton />
+      </div>
+    </section>
+  );
+}
+
+function EvidencePanel({
+  decisions,
+  risks,
+}: {
+  decisions: Decision[];
+  risks: Risk[];
+}) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+      <p className="text-sm font-semibold text-white">Evidencia operativa</p>
+      <div className="mt-5 grid gap-5 md:grid-cols-2">
+        <div>
+          <p className="text-xs uppercase tracking-[0.14em] text-white/45">
+            Decisiones
+          </p>
+          <div className="mt-3 space-y-3">
+            {decisions.slice(0, 3).map((decision) => (
+              <div key={decision.id} className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
+                <p className="text-sm font-medium text-white/82">
+                  {decision.title}
+                </p>
+                {decision.impact ? (
+                  <p className="mt-1 text-xs text-white/45">
+                    Impacto: {decision.impact}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+            {!decisions.length ? (
+              <p className="text-sm text-white/55">Sin decisiones registradas.</p>
+            ) : null}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-[0.14em] text-white/45">
+            Riesgos
+          </p>
+          <div className="mt-3 space-y-3">
+            {risks.slice(0, 3).map((risk) => (
+              <div key={risk.id} className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
+                <p className="text-sm font-medium text-white/82">{risk.title}</p>
+                <p className="mt-1 text-xs text-white/45">
+                  {risk.severity} | {risk.status}
+                </p>
+              </div>
+            ))}
+            {!risks.length ? (
+              <p className="text-sm text-white/55">Sin riesgos registrados.</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -350,299 +591,52 @@ export default async function WorkspacePage({
   const workspace = await getWorkspaceData(clientParam, resolvedSearchParams);
   const client = workspace.client;
   const latestAssessment = workspace.latestAssessment;
-  const priorityRisks = workspace.risks.filter((risk) =>
-    ["critical", "high"].includes(risk.severity.toLowerCase()),
-  );
-  const priorityItems = workspace.roadmapItems.filter((item) =>
-    ["critical", "high"].includes(item.priority.toLowerCase()),
-  );
-  const lastReview =
+  const model = buildDashboardModel(latestAssessment);
+  const evaluationDate = formatDate(
     latestAssessment?.created_at ??
-    workspace.sessions[0]?.session_date ??
-    client?.created_at;
+      workspace.sessions[0]?.session_date ??
+      client?.created_at,
+  );
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#172554_0%,#020617_46%,#020617_100%)] px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-10">
-      <div className="mx-auto max-w-7xl">
-        <Link
-          href="/"
-          className="inline-flex text-sm font-medium text-slate-300 transition hover:text-white"
-        >
-          {"<-"} Volver al landing
-        </Link>
+    <DashboardFrame
+      clientName={client?.name ?? "Cliente no encontrado"}
+      evaluationDate={evaluationDate}
+    >
+      {workspace.error ? (
+        <div className="mb-5 rounded-lg border border-[#C9A227]/40 bg-[#C9A227]/10 p-4 text-sm leading-6 text-white/78">
+          {workspace.error} Puedes seguir usando{" "}
+          <Link href="/workspace/demo-client" className="font-semibold underline">
+            demo-client
+          </Link>
+          .
+        </div>
+      ) : null}
 
-        {workspace.error ? (
-          <div className="mt-6 rounded-[1.25rem] border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">
-            {workspace.error} Puedes seguir usando{" "}
-            <Link href="/workspace/demo-client" className="font-semibold underline">
-              demo-client
-            </Link>
-            .
+      <section id="resumen-ejecutivo" className="space-y-5">
+        <MetricCards metrics={model.metrics} />
+
+        <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+          <StructuralRadar layers={model.layers} />
+          <div className="grid gap-5">
+            <CriticalAlert alert={model.alert} />
+            <FounderModule founder={model.founder} />
           </div>
-        ) : null}
+        </div>
 
-        <div className="mt-6">
-          <WorkspaceIdentity
-            clientName={client?.name ?? "Cliente no encontrado"}
-            clientDetail={`${client?.industry ?? "Industria sin registrar"} · ${client?.status ?? "Sin estado"} · Ultima revision: ${formatDate(lastReview)}`}
-            context="Workspace del cliente"
+        <div className="grid gap-5 xl:grid-cols-[0.8fr_1fr]">
+          <EconomicImpact impact={model.economicImpact} />
+          <Recommendations recommendation={model.recommendation} />
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+          <RoadmapSummary items={workspace.roadmapItems} />
+          <EvidencePanel
+            decisions={workspace.decisions}
+            risks={workspace.risks}
           />
         </div>
-
-        <header className="mt-6 rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.75)] sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-blue-200">
-                Lectura ejecutiva
-              </p>
-              <h1 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
-                Estado estructural del sistema
-              </h1>
-              <div className="mt-5 flex flex-wrap gap-3 text-sm">
-                <span
-                  className={`rounded-full border px-4 py-2 ${getStatusTone(
-                    client?.status ?? "Sin estado",
-                  )}`}
-                >
-                  {client?.status ?? "Sin estado"}
-                </span>
-                <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-slate-300">
-                  Última revisión: {formatDate(lastReview)}
-                </span>
-                <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-slate-300">
-                  {client?.industry ?? "Industria sin registrar"}
-                </span>
-              </div>
-            </div>
-            <NewSessionButton />
-          </div>
-        </header>
-
-        <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {[
-            ["IIA", latestAssessment?.iia ?? "N/A"],
-            ["IRA", latestAssessment?.ira ?? "N/A"],
-            ["MIE", latestAssessment?.mie_percent !== null && latestAssessment?.mie_percent !== undefined ? `${latestAssessment.mie_percent}%` : "N/A"],
-            ["Founder dependency", latestAssessment?.founder_dependency ?? "N/A"],
-            ["Process level", latestAssessment?.process_level ?? "N/A"],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                {label}
-              </p>
-              <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-            </div>
-          ))}
-        </section>
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6 sm:p-7">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-200">
-              Roadmap STRAX
-            </p>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              {roadmapPhases.map((phase) => {
-                const items = workspace.roadmapItems.filter(
-                  (item) => item.phase === phase,
-                );
-
-                return (
-                  <article
-                    id={phase === "Fase 2 Arquitectura" ? "fase-2-arquitectura" : undefined}
-                    key={phase}
-                    className={`scroll-mt-8 rounded-[1.5rem] border p-5 ${
-                      phase === "Fase 2 Arquitectura"
-                        ? "border-blue-300/30 bg-blue-400/10"
-                        : "border-white/10 bg-slate-950/50"
-                    }`}
-                  >
-                    <h2 className="text-lg font-semibold text-white">{phase}</h2>
-                    <div className="mt-4 space-y-3">
-                      {items.length ? (
-                        items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="rounded-[1.1rem] border border-white/10 bg-white/5 p-4"
-                          >
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-semibold text-white">
-                                {item.title}
-                              </p>
-                              <span
-                                className={`rounded-full border px-3 py-1 text-xs ${getStatusTone(
-                                  item.status,
-                                )}`}
-                              >
-                                {item.status}
-                              </span>
-                            </div>
-                            {item.description ? (
-                              <p className="mt-2 text-sm leading-6 text-slate-300">
-                                {item.description}
-                              </p>
-                            ) : null}
-                          </div>
-                        ))
-                      ) : (
-                        <EmptyState label="Sin acciones registradas para esta fase." />
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-
-          <aside className="space-y-6">
-            <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-200">
-                Prioridades
-              </p>
-              <div className="mt-5 space-y-3">
-                {[...priorityRisks, ...priorityItems].length ? (
-                  <>
-                    {priorityRisks.map((risk) => (
-                      <div
-                        key={risk.id}
-                        className="rounded-[1.1rem] border border-red-300/20 bg-red-400/10 p-4"
-                      >
-                        <p className="font-semibold text-red-50">{risk.title}</p>
-                        <p className="mt-2 text-sm leading-6 text-red-50/80">
-                          {risk.impact ?? "Impacto sin registrar"}
-                        </p>
-                      </div>
-                    ))}
-                    {priorityItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-[1.1rem] border border-blue-300/20 bg-blue-400/10 p-4"
-                      >
-                        <p className="font-semibold text-blue-50">{item.title}</p>
-                        <p className="mt-2 text-sm leading-6 text-blue-50/80">
-                          {item.phase} · prioridad {item.priority}
-                        </p>
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <EmptyState label="Sin prioridades críticas registradas." />
-                )}
-              </div>
-            </section>
-
-            <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-200">
-                Sesiones
-              </p>
-              <div className="mt-5 space-y-3">
-                {workspace.sessions.length ? (
-                  workspace.sessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className="rounded-[1.1rem] border border-white/10 bg-white/5 p-4"
-                    >
-                      <p className="font-semibold text-white">
-                        {session.session_type}
-                      </p>
-                      <p className="mt-2 text-sm text-slate-300">
-                        {formatDate(session.session_date)} · {session.status}
-                      </p>
-                      {session.notes ? (
-                        <p className="mt-2 text-sm leading-6 text-slate-400">
-                          {session.notes}
-                        </p>
-                      ) : null}
-                    </div>
-                  ))
-                ) : (
-                  <EmptyState label="Sin sesiones registradas." />
-                )}
-              </div>
-            </section>
-          </aside>
-        </div>
-
-        <section className="mt-6 grid gap-6 lg:grid-cols-2">
-          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-200">
-              Decisiones arquitectónicas
-            </p>
-            <div className="mt-5 space-y-3">
-              {workspace.decisions.length ? (
-                workspace.decisions.map((decision) => (
-                  <div
-                    key={decision.id}
-                    className="rounded-[1.1rem] border border-white/10 bg-slate-950/40 p-4"
-                  >
-                    <p className="font-semibold text-white">{decision.title}</p>
-                    {decision.description ? (
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        {decision.description}
-                      </p>
-                    ) : null}
-                    {decision.impact ? (
-                      <p className="mt-2 text-sm text-blue-100">
-                        Impacto: {decision.impact}
-                      </p>
-                    ) : null}
-                  </div>
-                ))
-              ) : (
-                <EmptyState label="Sin decisiones registradas." />
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-200">
-              Riesgos abiertos
-            </p>
-            <div className="mt-5 space-y-3">
-              {workspace.risks.length ? (
-                workspace.risks.map((risk) => (
-                  <div
-                    key={risk.id}
-                    className="rounded-[1.1rem] border border-white/10 bg-slate-950/40 p-4"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-white">{risk.title}</p>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                        {risk.severity}
-                      </span>
-                    </div>
-                    {risk.impact ? (
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        {risk.impact}
-                      </p>
-                    ) : null}
-                  </div>
-                ))
-              ) : (
-                <EmptyState label="Sin riesgos registrados." />
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-[2rem] border border-blue-300/20 bg-blue-400/10 p-6 sm:p-7">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-100">
-            STRAX LIVE
-          </p>
-          <h2 className="mt-3 max-w-3xl text-2xl font-semibold tracking-[-0.03em] text-white">
-            Mantén la arquitectura viva después del diagnóstico.
-          </h2>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-blue-50/85">
-            Este workspace reúne el seguimiento del cliente: lectura, arquitectura,
-            integración, control, decisiones y riesgos en un solo punto operativo.
-          </p>
-          <div className="mt-5">
-            <ContinueArchitectureButton />
-          </div>
-        </section>
-      </div>
-    </main>
+      </section>
+    </DashboardFrame>
   );
 }

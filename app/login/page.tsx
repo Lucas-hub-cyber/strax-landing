@@ -1,12 +1,29 @@
 "use client";
 
-import { Suspense, type FormEvent, useEffect, useState } from "react";
+import {
+  Suspense,
+  type FormEvent,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+
+const demoAccessKey = "strax_demo_access";
+const subscribeToLocalhost = () => () => {};
+
+function getLocalhostSnapshot() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return ["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -17,6 +34,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -48,6 +66,43 @@ function LoginForm() {
 
     router.replace(nextPath);
   }
+
+  async function handleGoogleSignIn() {
+    if (!isSupabaseConfigured || !supabase) {
+      setMessage("Supabase Auth no esta configurado.");
+      return;
+    }
+
+    setIsGoogleSubmitting(true);
+    setMessage("");
+
+    const redirectTo = `${window.location.origin}/login?next=${encodeURIComponent(
+      nextPath,
+    )}`;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+      },
+    });
+
+    if (error) {
+      setMessage(error.message);
+      setIsGoogleSubmitting(false);
+    }
+  }
+
+  function handleDemoAccess() {
+    window.sessionStorage.setItem(demoAccessKey, "enabled");
+    router.replace(nextPath);
+  }
+
+  const canUseDemoAccess = useSyncExternalStore(
+    subscribeToLocalhost,
+    getLocalhostSnapshot,
+    () => false,
+  );
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#172554_0%,#020617_48%,#020617_100%)] px-5 py-8 text-white">
@@ -107,6 +162,51 @@ function LoginForm() {
         <p className="mt-3 text-sm leading-6 text-slate-300">
           Inicia sesion para ver clientes, intervenciones y herramientas internas.
         </p>
+        <p className="mt-4 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-3 text-sm leading-6 text-blue-50">
+          Si aun no tienes usuario, puedes crear tu perfil y pedir acceso a
+          Fase 2 desde{" "}
+          <Link
+            href={`/registro?next=${encodeURIComponent(nextPath)}`}
+            className="font-semibold text-white underline-offset-4 hover:underline"
+          >
+            registro
+          </Link>
+          .
+        </p>
+
+        <button
+          type="button"
+          onClick={() => void handleGoogleSignIn()}
+          disabled={isGoogleSubmitting || isSubmitting}
+          className="mt-6 flex min-h-12 w-full items-center justify-center gap-3 rounded-full border border-white/10 bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          <span className="grid size-5 place-items-center rounded-full border border-slate-200 text-xs font-bold text-blue-600">
+            G
+          </span>
+          {isGoogleSubmitting ? "Conectando..." : "Continuar con Google"}
+        </button>
+
+        <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <span className="h-px flex-1 bg-white/10" />
+          o
+          <span className="h-px flex-1 bg-white/10" />
+        </div>
+
+        {message ? (
+          <p className="rounded-2xl border border-red-300/20 bg-red-400/10 px-4 py-3 text-sm text-red-50">
+            {message}
+          </p>
+        ) : null}
+
+        {canUseDemoAccess ? (
+          <button
+            type="button"
+            onClick={handleDemoAccess}
+            className="mt-4 min-h-12 w-full rounded-full border border-blue-300/25 bg-blue-400/10 px-6 py-3 text-sm font-semibold text-blue-50 transition hover:bg-blue-400/15"
+          >
+            Entrar en modo demo
+          </button>
+        ) : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <label className="block">
@@ -135,12 +235,6 @@ function LoginForm() {
             />
           </label>
 
-          {message ? (
-            <p className="rounded-2xl border border-red-300/20 bg-red-400/10 px-4 py-3 text-sm text-red-50">
-              {message}
-            </p>
-          ) : null}
-
           <button
             type="submit"
             disabled={isSubmitting}
@@ -149,6 +243,15 @@ function LoginForm() {
             {isSubmitting ? "Entrando..." : "Entrar"}
           </button>
         </form>
+        <p className="mt-5 text-sm leading-6 text-slate-300">
+          No tienes acceso todavia?{" "}
+          <Link
+            href={`/registro?next=${encodeURIComponent(nextPath)}`}
+            className="font-semibold text-white underline-offset-4 hover:underline"
+          >
+            Crear perfil
+          </Link>
+        </p>
       </section>
       </div>
     </main>

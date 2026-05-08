@@ -194,6 +194,45 @@ create index if not exists consent_logs_user_created_idx
 create index if not exists consent_logs_versions_idx
   on consent_logs (accepted_terms_version, accepted_privacy_version);
 
+-- Creates the product profile as soon as a Supabase Auth user signs up.
+-- This keeps the UI from creating an auth user without a STRAX role.
+create or replace function public.handle_new_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  requested_role text;
+begin
+  requested_role := coalesce(new.raw_user_meta_data->>'role', 'architect');
+
+  if requested_role not in ('architect', 'client', 'viewer') then
+    requested_role := 'architect';
+  end if;
+
+  insert into public.user_profiles (user_id, email, full_name, role, status)
+  values (
+    new.id,
+    new.email,
+    nullif(new.raw_user_meta_data->>'full_name', ''),
+    requested_role,
+    'active'
+  )
+  on conflict (user_id) do update
+    set email = excluded.email,
+        full_name = coalesce(public.user_profiles.full_name, excluded.full_name);
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_profile on auth.users;
+
+create trigger on_auth_user_created_profile
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user_profile();
+
 -- Recommended RLS starter.
 -- Review before production. Run after creating the tables above.
 
@@ -234,6 +273,23 @@ create policy "admins can manage profiles"
         and profile.role = 'admin'
         and profile.status = 'active'
     )
+  );
+
+create policy "users can insert own profile"
+  on user_profiles for insert
+  with check (
+    auth.uid() = user_id
+    and role in ('architect', 'client', 'viewer')
+    and status in ('active', 'invited')
+  );
+
+create policy "users can update own profile"
+  on user_profiles for update
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and role in ('architect', 'client', 'viewer')
+    and status in ('active', 'invited')
   );
 
 create policy "members can read own memberships"

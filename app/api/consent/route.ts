@@ -9,6 +9,18 @@ type ConsentRequest = {
   acceptedPrivacyVersion?: string;
 };
 
+function isRecoverableConsentLogError(errorMessage: string) {
+  const normalizedMessage = errorMessage.toLowerCase();
+
+  return (
+    normalizedMessage.includes("consent_logs") &&
+    (normalizedMessage.includes("could not find the table") ||
+      normalizedMessage.includes("schema cache") ||
+      normalizedMessage.includes("permission denied") ||
+      normalizedMessage.includes("row-level security"))
+  );
+}
+
 function getClientIp(headerList: Headers) {
   return (
     headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -58,6 +70,21 @@ export async function POST(request: Request) {
         .single();
 
       if (error) {
+        if (isRecoverableConsentLogError(error.message)) {
+          console.warn("[consent] log not persisted", {
+            reason: error.message,
+          });
+
+          return Response.json({
+            ok: true,
+            id: "unpersisted-consent",
+            mode: "consent_log_not_persisted",
+            warning: error.message,
+            acceptedTermsVersion,
+            acceptedPrivacyVersion,
+          });
+        }
+
         throw new Error(error.message);
       }
 

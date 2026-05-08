@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import type { UserRole } from "@/types/auth";
@@ -13,6 +13,22 @@ const roleLabels: Record<UserRole, string> = {
   client: "Cliente",
   viewer: "Lectura",
 };
+
+const demoAccessKey = "strax_demo_access";
+const demoRole: UserRole = "architect";
+const subscribeToDemoAccess = () => () => {};
+
+function getDemoAccessSnapshot() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const isLocalhost = ["localhost", "127.0.0.1"].includes(
+    window.location.hostname,
+  );
+
+  return isLocalhost && window.sessionStorage.getItem(demoAccessKey) === "enabled";
+}
 
 function canAccess(role: UserRole | null, allowedRoles?: UserRole[]) {
   if (!allowedRoles?.length) {
@@ -32,12 +48,44 @@ export function AuthGate({
   const router = useRouter();
   const pathname = usePathname();
   const { isConfigured, isLoading, session, user, role, signOut } = useAuth();
+  const hasDemoAccess = useSyncExternalStore(
+    subscribeToDemoAccess,
+    getDemoAccessSnapshot,
+    () => false,
+  );
 
   useEffect(() => {
-    if (!isLoading && isConfigured && !session) {
+    if (!isLoading && isConfigured && !session && !hasDemoAccess) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
-  }, [isConfigured, isLoading, pathname, router, session]);
+  }, [hasDemoAccess, isConfigured, isLoading, pathname, router, session]);
+
+  if (hasDemoAccess && canAccess(demoRole, allowedRoles)) {
+    return (
+      <>
+        <div className="border-b border-blue-300/20 bg-slate-950 px-4 py-3 text-white">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <span className="font-semibold text-blue-100">STRAX Secure</span>
+              <span className="ml-2 text-slate-500">Modo demo local</span>{" "}
+              <span className="text-slate-400">{roleLabels[demoRole]}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.sessionStorage.removeItem(demoAccessKey);
+                router.replace("/login");
+              }}
+              className="w-fit rounded-full bg-white px-4 py-2 font-semibold text-slate-950"
+            >
+              Salir demo
+            </button>
+          </div>
+        </div>
+        {children}
+      </>
+    );
+  }
 
   if (!isConfigured) {
     return (
@@ -54,7 +102,10 @@ export function AuthGate({
             `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Cuando esten listas, esta ruta
             pedira login y validara roles.
           </p>
-          <Link href="/" className="mt-5 inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950">
+          <Link
+            href="/"
+            className="mt-5 inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950"
+          >
             Volver al landing
           </Link>
         </div>
@@ -83,15 +134,24 @@ export function AuthGate({
             Tu usuario no tiene permisos para esta seccion.
           </h1>
           <p className="mt-3 text-sm leading-6 text-red-50/85">
-            Rol actual: {role ? roleLabels[role] : "sin rol asignado"}.
+            Rol actual: {role ? roleLabels[role] : "sin rol asignado"}. El
+            panel de administracion requiere rol Administrador.
           </p>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="mt-5 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950"
-          >
-            Cerrar sesion
-          </button>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href={`/registro?next=${encodeURIComponent(pathname)}`}
+              className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950"
+            >
+              Completar perfil
+            </Link>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white"
+            >
+              Cerrar sesion
+            </button>
+          </div>
         </div>
       </main>
     );
@@ -102,17 +162,34 @@ export function AuthGate({
       <div className="border-b border-white/10 bg-slate-950 px-4 py-3 text-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <span className="font-semibold text-blue-100">STRAX Secure</span>{" "}
+            <span className="font-semibold text-blue-100">STRAX Secure</span>
+            <span className="ml-2 text-slate-500">Cuenta interna</span>{" "}
             <span className="text-slate-400">
-              {user?.email} · {role ? roleLabels[role] : "sin rol"}
+              {user?.email} | {role ? roleLabels[role] : "sin rol"}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {role === "admin" ? (
-              <Link href="/admin" className="rounded-full border border-white/10 px-4 py-2 text-slate-200 transition hover:bg-white/5">
-                Admin
-              </Link>
-            ) : null}
+            <Link
+              href="/workspace/demo-client"
+              className="rounded-full border border-white/10 px-4 py-2 text-slate-200 transition hover:bg-white/5"
+            >
+              Workspace
+            </Link>
+            <Link
+              href="/admin"
+              className={`rounded-full border px-4 py-2 transition ${
+                role === "admin"
+                  ? "border-blue-300/35 bg-blue-400/10 text-blue-50 hover:bg-blue-400/15"
+                  : "border-white/10 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+              }`}
+              title={
+                role === "admin"
+                  ? "Abrir panel de administracion"
+                  : "Panel visible, requiere rol Administrador"
+              }
+            >
+              Panel admin{role === "admin" ? "" : " (solo admin)"}
+            </Link>
             <button
               type="button"
               onClick={() => void signOut()}

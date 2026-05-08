@@ -65,10 +65,10 @@ export function CompactLandingSections({
                 </p>
                 <div className="mt-5 flex flex-col gap-3">
                   <Link
-                    href="/login?next=%2Ffase-2"
+                    href="/registro?next=%2Ffase-2"
                     className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-6 py-3 font-semibold text-white transition hover:bg-slate-800"
                   >
-                    Entrar a Fase 2 con acceso
+                    Crear perfil para Fase 2
                   </Link>
                   <button
                     type="button"

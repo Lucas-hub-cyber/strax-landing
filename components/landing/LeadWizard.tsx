@@ -23,7 +23,7 @@ export function LeadWizard({ onBack }: { onBack: () => void }) {
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [consentError, setConsentError] = useState("");
 
-  async function registerConsent() {
+  async function registerConsentLog() {
     const response = await fetch("/api/consent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,7 +34,9 @@ export function LeadWizard({ onBack }: { onBack: () => void }) {
     });
 
     if (!response.ok) {
-      throw new Error("No se pudo registrar el consentimiento legal.");
+      console.warn("[consent] lead wizard log was not persisted", {
+        status: response.status,
+      });
     }
   }
 
@@ -46,14 +48,9 @@ export function LeadWizard({ onBack }: { onBack: () => void }) {
 
     if (step === 0) {
       try {
-        await registerConsent();
+        await registerConsentLog();
       } catch (error) {
-        setConsentError(
-          error instanceof Error
-            ? error.message
-            : "No se pudo registrar el consentimiento.",
-        );
-        return;
+        console.warn("[consent] lead wizard log request failed", error);
       }
     }
 
@@ -76,7 +73,7 @@ export function LeadWizard({ onBack }: { onBack: () => void }) {
       );
     }
 
-    router.push("/login?next=%2Ffase-2");
+    router.push("/registro?next=%2Ffase-2");
   }
 
   if (step >= questions.length) {

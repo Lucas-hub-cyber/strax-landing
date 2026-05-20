@@ -53,21 +53,26 @@ export function AuthGate({
     getDemoAccessSnapshot,
     () => false,
   );
+  const hasMockWorkspaceAccess = pathname.startsWith("/workspace/demo-client");
+  const canUseLocalDemo =
+    (hasDemoAccess || hasMockWorkspaceAccess) && canAccess(demoRole, allowedRoles);
 
   useEffect(() => {
-    if (!isLoading && isConfigured && !session && !hasDemoAccess) {
+    if (!isLoading && isConfigured && !session && !canUseLocalDemo) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
-  }, [hasDemoAccess, isConfigured, isLoading, pathname, router, session]);
+  }, [canUseLocalDemo, isConfigured, isLoading, pathname, router, session]);
 
-  if (hasDemoAccess && canAccess(demoRole, allowedRoles)) {
+  if (canUseLocalDemo) {
     return (
       <>
         <div className="border-b border-blue-300/20 bg-slate-950 px-4 py-3 text-white">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <span className="font-semibold text-blue-100">STRAX Secure</span>
-              <span className="ml-2 text-slate-500">Modo demo local</span>{" "}
+              <span className="ml-2 text-slate-500">
+                {hasMockWorkspaceAccess ? "Mockup local" : "Modo demo local"}
+              </span>{" "}
               <span className="text-slate-400">{roleLabels[demoRole]}</span>
             </div>
             <button

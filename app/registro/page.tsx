@@ -38,6 +38,7 @@ function RegisterForm() {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const safeNextPath = useMemo(() => {
     return nextPath.startsWith("/") ? nextPath : "/fase-2";
@@ -159,6 +160,50 @@ function RegisterForm() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handlePasswordReset() {
+    if (!isSupabaseConfigured || !supabase) {
+      setIsSuccess(false);
+      setMessage("Supabase Auth no esta configurado.");
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      setIsSuccess(false);
+      setMessage("Escribe tu email para enviarte el enlace de recuperacion.");
+      return;
+    }
+
+    setIsResettingPassword(true);
+    setMessage("");
+    setIsSuccess(false);
+
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/recuperar?next=${encodeURIComponent(
+            safeNextPath,
+          )}`
+        : undefined;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo,
+    });
+
+    if (error) {
+      setIsSuccess(false);
+      setMessage(error.message);
+      setIsResettingPassword(false);
+      return;
+    }
+
+    setIsSuccess(true);
+    setMessage(
+      "Si ese email ya tiene cuenta, te enviaremos un enlace para recuperar la contrasena.",
+    );
+    setIsResettingPassword(false);
   }
 
   function handleDemoAccess() {
@@ -328,6 +373,16 @@ function RegisterForm() {
               Entrar con mi cuenta
             </Link>
           </p>
+          <button
+            type="button"
+            onClick={() => void handlePasswordReset()}
+            disabled={isResettingPassword || isSubmitting}
+            className="mt-3 text-sm font-semibold text-blue-100 underline-offset-4 transition hover:text-white hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isResettingPassword
+              ? "Enviando recuperacion..."
+              : "Recuperar contrasena"}
+          </button>
         </section>
       </div>
     </main>

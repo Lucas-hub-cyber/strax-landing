@@ -235,6 +235,15 @@ function LoginForm() {
             />
           </label>
 
+          <div className="flex justify-end">
+            <Link
+              href={`/recuperar?next=${encodeURIComponent(nextPath)}`}
+              className="text-sm font-semibold text-blue-100 underline-offset-4 transition hover:text-white hover:underline"
+            >
+              Recuperar contrasena
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={isSubmitting}

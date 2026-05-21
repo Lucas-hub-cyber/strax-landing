@@ -20,6 +20,50 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Base de datos y migraciones Supabase
+
+La estructura de base de datos del proyecto se gestiona desde Git con Supabase CLI. Los cambios de schema deben quedar en `supabase/migrations/` y no hacerse manualmente desde el panel de Supabase.
+
+Los comandos siguientes asumen Supabase CLI instalado y una sesion iniciada con `supabase login`. Si no tienes el CLI instalado globalmente, puedes ejecutar el mismo comando con `npm exec --yes --package supabase -- supabase <comando>`.
+
+### Crear una nueva migracion
+
+```bash
+supabase migration new nombre_descriptivo_de_la_migracion
+```
+
+El CLI genera un archivo con timestamp oficial en `supabase/migrations/`. Edita ese archivo SQL con los cambios de schema que correspondan.
+
+### Aplicar migraciones
+
+Para aplicar migraciones al proyecto remoto vinculado:
+
+```bash
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+Tambien puedes aplicar migraciones a una base especifica usando una URL de conexion:
+
+```bash
+supabase db push --db-url "<postgres-connection-url>"
+```
+
+Para validar contra la base local de Supabase:
+
+```bash
+supabase start
+supabase db push --local
+```
+
+### Replicar la base en otro entorno
+
+1. Clona el repositorio y configura Supabase CLI.
+2. Vincula el proyecto destino con `supabase link --project-ref <project-ref>` o usa `--db-url`.
+3. Ejecuta `supabase db push` para aplicar todas las migraciones pendientes.
+
+Si el entorno debe partir desde cero, crea primero el proyecto/base de datos destino y despues aplica las migraciones versionadas desde este repositorio.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

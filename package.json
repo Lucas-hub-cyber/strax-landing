@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "sh scripts/supabase-db-push.sh",
+    "db:migrate:dry-run": "sh scripts/supabase-db-push.sh --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",

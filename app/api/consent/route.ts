@@ -63,11 +63,9 @@ export async function POST(request: Request) {
     };
 
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("consent_logs")
-        .insert(consentLog)
-        .select("id")
-        .single();
+        .insert(consentLog);
 
       if (error) {
         if (isRecoverableConsentLogError(error.message)) {
@@ -90,7 +88,7 @@ export async function POST(request: Request) {
 
       return Response.json({
         ok: true,
-        id: data.id,
+        id: "persisted-consent",
         acceptedTermsVersion,
         acceptedPrivacyVersion,
       });

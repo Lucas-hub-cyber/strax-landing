@@ -28,7 +28,7 @@ function getLocalhostSnapshot() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") ?? "/workspace/demo-client";
+  const nextPath = searchParams.get("next") ?? "/fase-2";
   const { session } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

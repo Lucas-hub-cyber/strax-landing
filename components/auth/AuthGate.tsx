@@ -175,7 +175,7 @@ export function AuthGate({
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/workspace/demo-client"
+              href={`/workspace/${user?.id ?? ""}`}
               className="rounded-full border border-white/10 px-4 py-2 text-slate-200 transition hover:bg-white/5"
             >
               Workspace

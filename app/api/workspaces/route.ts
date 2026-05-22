@@ -3,7 +3,10 @@ import {
   buildWorkspaceSessionHref,
   getMetricNumber,
 } from "@/lib/fase2";
-import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+import {
+  isSupabaseAdminConfigured,
+  supabaseAdmin,
+} from "@/lib/supabaseAdmin";
 
 type CreateWorkspaceRequest = {
   brief?: unknown;
@@ -28,11 +31,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isSupabaseConfigured || !supabase) {
+    if (!isSupabaseAdminConfigured || !supabaseAdmin) {
       return Response.json({
         ok: true,
         fallbackHref: buildWorkspaceSessionHref(engineResponse),
-        message: "Supabase no esta configurado. Te llevamos al workspace demo.",
+        message:
+          "Supabase admin no esta configurado. Te llevamos al workspace demo.",
       });
     }
 
@@ -45,7 +49,7 @@ export async function POST(request: Request) {
       structured?.governance?.founder_dependency ?? null;
     const processLevel = structured?.operations?.process_definition ?? null;
 
-    const { data: client, error: clientError } = await supabase
+    const { data: client, error: clientError } = await supabaseAdmin
       .from("clients")
       .insert({
         name: `Cliente STRAX ${new Date().toLocaleDateString("es-CO")}`,
@@ -64,7 +68,7 @@ export async function POST(request: Request) {
     clientId = client.id as string;
 
     const inserts = [
-      await supabase.from("assessments").insert({
+      await supabaseAdmin.from("assessments").insert({
         client_id: clientId,
         iia,
         ira,
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
           brief: payload.brief,
         },
       }),
-      await supabase.from("roadmap_items").insert([
+      await supabaseAdmin.from("roadmap_items").insert([
         {
           client_id: clientId,
           phase: "Fase 1 Diagnostico",
@@ -116,20 +120,20 @@ export async function POST(request: Request) {
           priority: "medium",
         },
       ]),
-      await supabase.from("sessions").insert({
+      await supabaseAdmin.from("sessions").insert({
         client_id: clientId,
         session_type: "Arquitectura Objetivo",
         session_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
         status: "scheduled",
         notes: "Sesion para convertir diagnostico en arquitectura objetivo.",
       }),
-      await supabase.from("decisions").insert({
+      await supabaseAdmin.from("decisions").insert({
         client_id: clientId,
         title: "Separar decisiones operativas de decisiones estrategicas",
         description: "Reducir carga del fundador y ordenar gobernanza semanal.",
         impact: "Alto",
       }),
-      await supabase.from("risks").insert({
+      await supabaseAdmin.from("risks").insert({
         client_id: clientId,
         title:
           founderDependency === "high"
@@ -152,8 +156,8 @@ export async function POST(request: Request) {
       clientId,
     });
   } catch (error) {
-    if (clientId && supabase) {
-      await supabase.from("clients").delete().eq("id", clientId);
+    if (clientId && supabaseAdmin) {
+      await supabaseAdmin.from("clients").delete().eq("id", clientId);
     }
 
     return Response.json(

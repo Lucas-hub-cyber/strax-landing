@@ -15,7 +15,10 @@ import {
   type RecommendationData,
   type StructuralLayer,
 } from "@/components/workspace/DashboardShell";
-import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+import {
+  isSupabaseAdminConfigured,
+  supabaseAdmin,
+} from "@/lib/supabaseAdmin";
 import type {
   Assessment,
   Client,
@@ -249,7 +252,7 @@ async function getWorkspaceData(
     return getDemoWorkspaceData(searchParams);
   }
 
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseAdminConfigured || !supabaseAdmin) {
     return {
       client: null,
       latestAssessment: null,
@@ -258,11 +261,11 @@ async function getWorkspaceData(
       decisions: [],
       risks: [],
       error:
-        "Supabase no esta configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para cargar clientes reales.",
+        "Supabase admin no esta configurado. Define NEXT_SUPABASE_SERVICE_ROLE_KEY para cargar clientes reales.",
     };
   }
 
-  const { data: client, error: clientError } = await supabase
+  const { data: client, error: clientError } = await supabaseAdmin
     .from("clients")
     .select("*")
     .eq("id", clientId)
@@ -287,29 +290,29 @@ async function getWorkspaceData(
     decisionsResult,
     risksResult,
   ] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from("assessments")
       .select("*")
       .eq("client_id", client.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle<Assessment>(),
-    supabase
+    supabaseAdmin
       .from("roadmap_items")
       .select("*")
       .eq("client_id", client.id)
       .order("created_at", { ascending: true }),
-    supabase
+    supabaseAdmin
       .from("sessions")
       .select("*")
       .eq("client_id", client.id)
       .order("session_date", { ascending: false }),
-    supabase
+    supabaseAdmin
       .from("decisions")
       .select("*")
       .eq("client_id", client.id)
       .order("created_at", { ascending: false }),
-    supabase
+    supabaseAdmin
       .from("risks")
       .select("*")
       .eq("client_id", client.id)

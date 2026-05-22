@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
 
-import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 import { WorkspaceIdentity } from "@/components/workspace/WorkspaceIdentity";
 
 type FounderProfile = {
@@ -804,18 +803,20 @@ export default function InterventionPage() {
     setClientName(fallbackClientName);
 
     async function loadClientName() {
-      if (!isSupabaseConfigured || !supabase || clientId === "demo-client") {
+      if (clientId === "demo-client") {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("clients")
-        .select("name")
-        .eq("id", clientId)
-        .maybeSingle<{ name: string }>();
+      const response = await fetch(
+        `/api/interventions?clientId=${encodeURIComponent(clientId)}`,
+      );
+      const data = (await response.json()) as {
+        ok?: boolean;
+        clientName?: string | null;
+      };
 
-      if (!cancelled && !error && data?.name) {
-        setClientName(data.name);
+      if (!cancelled && response.ok && data.ok && data.clientName) {
+        setClientName(data.clientName);
       }
     }
 
@@ -859,36 +860,41 @@ export default function InterventionPage() {
     }
 
     async function loadLatestIntervention() {
-      if (!isSupabaseConfigured || !supabase || clientId === "demo-client") {
+      if (clientId === "demo-client") {
         return;
       }
 
-      const sessionResponse = await supabase
-        .from("intervention_sessions")
-        .select("*")
-        .eq("client_id", clientId)
-        .order("saved_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const response = await fetch(
+        `/api/interventions?clientId=${encodeURIComponent(clientId)}`,
+      );
+      const data = (await response.json()) as {
+        ok?: boolean;
+        clientName?: string | null;
+        session?: Record<string, unknown> | null;
+        findings?: {
+          id: string;
+          title?: string | null;
+          description?: string | null;
+          severity?: string | null;
+          category?: string | null;
+        }[];
+      };
 
-      if (sessionResponse.error || !sessionResponse.data) {
+      if (!response.ok || !data.ok || !data.session) {
         return;
       }
 
-      const savedSession = sessionResponse.data;
-      const findingsResponse = await supabase
-        .from("intervention_findings")
-        .select("id,title,description,severity,category")
-        .eq("intervention_session_id", savedSession.id)
-        .order("created_at", { ascending: true });
+      if (!cancelled && data.clientName) {
+        setClientName(data.clientName);
+      }
 
+      const savedSession = data.session;
       const rawState =
         savedSession.raw_state && typeof savedSession.raw_state === "object"
           ? (savedSession.raw_state as Partial<InterventionState>)
           : {};
       const findings =
-        findingsResponse.data?.map((finding) => ({
+        data.findings?.map((finding) => ({
           id: finding.id as string,
           title: (finding.title as string) ?? "",
           description: (finding.description as string | null) ?? "",
@@ -1343,74 +1349,41 @@ export default function InterventionPage() {
     setSaveMessage("Intervencion guardada localmente. Sincronizando...");
     setIsSaving(true);
 
-    if (!isSupabaseConfigured || !supabase || clientId === "demo-client") {
+    if (clientId === "demo-client") {
       setIsSaving(false);
       setSaveMessage(
-        clientId === "demo-client"
-          ? "Intervencion guardada localmente. demo-client no escribe en Supabase."
-          : "Intervencion guardada localmente. Falta configurar Supabase.",
+        "Intervencion guardada localmente. demo-client no escribe en Supabase.",
       );
       return;
     }
 
     try {
-      const sessionPayload = {
-        client_id: clientId,
-        founder_profile: nextState.founder,
-        transcript: nextState.transcript,
-        finances: nextState.finances,
-        processes: nextState.processes,
-        roadmap: nextState.roadmap,
-        generated_output: nextState.generated,
-        raw_state: nextState,
-        status: "saved",
-        saved_at: savedAt,
+      const response = await fetch("/api/interventions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clientId,
+          interventionSessionId: nextState.interventionSessionId,
+          state: nextState,
+          savedAt,
+        }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        interventionSessionId?: string;
       };
 
-      const response = nextState.interventionSessionId
-        ? await supabase
-            .from("intervention_sessions")
-            .update(sessionPayload)
-            .eq("id", nextState.interventionSessionId)
-            .select("id")
-            .single()
-        : await supabase
-            .from("intervention_sessions")
-            .insert(sessionPayload)
-            .select("id")
-            .single();
-
-      if (response.error || !response.data) {
-        throw new Error(
-          response.error?.message ?? "Supabase no devolvio la intervencion.",
-        );
+      if (!response.ok || !data.ok || !data.interventionSessionId) {
+        throw new Error(data.error ?? "Supabase no devolvio la intervencion.");
       }
 
-      const interventionSessionId = response.data.id as string;
-
-      await supabase
-        .from("intervention_findings")
-        .delete()
-        .eq("intervention_session_id", interventionSessionId);
-
-      if (nextState.findings.length) {
-        const findingsResponse = await supabase.from("intervention_findings").insert(
-          nextState.findings.map((finding) => ({
-            intervention_session_id: interventionSessionId,
-            client_id: clientId,
-            title: finding.title,
-            description: finding.description,
-            severity: finding.severity,
-            category: finding.category,
-          })),
-        );
-
-        if (findingsResponse.error) {
-          throw new Error(findingsResponse.error.message);
-        }
-      }
-
-      const syncedState = { ...nextState, interventionSessionId };
+      const syncedState = {
+        ...nextState,
+        interventionSessionId: data.interventionSessionId,
+      };
       window.localStorage.setItem(storageKey, JSON.stringify(syncedState));
       setState(syncedState);
       setSaveMessage("Intervencion guardada en Supabase y localStorage.");

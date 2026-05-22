@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
 
-import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
-
 type CompanyInfo = {
   company: string;
   founder: string;
@@ -342,12 +340,10 @@ export default function StraxSessionWorkspacePage() {
     setIsSaving(true);
     setSaveMessage("Sesion STRAX guardada en este navegador. Sincronizando...");
 
-    if (!isSupabaseConfigured || !supabase || clientId === "demo-client") {
+    if (clientId === "demo-client") {
       setIsSaving(false);
       setSaveMessage(
-        clientId === "demo-client"
-          ? "Sesion STRAX guardada localmente. demo-client no escribe en Supabase."
-          : "Sesion STRAX guardada localmente. Falta configurar Supabase.",
+        "Sesion STRAX guardada localmente. demo-client no escribe en Supabase.",
       );
       return;
     }
@@ -368,45 +364,32 @@ export default function StraxSessionWorkspacePage() {
     };
 
     try {
-      await supabase
-        .from("clients")
-        .update({
-          name: nextSession.companyInfo.company || "Cliente STRAX",
-          industry: nextSession.companyInfo.industry || null,
-          status: "intervencion activa",
-        })
-        .eq("id", clientId);
-
-      const sessionRecord = {
-        client_id: clientId,
-        session_type: "Intervencion STRAX",
-        session_date: savedAt,
-        status: "saved",
-        notes: JSON.stringify(operationalPayload),
+      const response = await fetch("/api/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clientId,
+          supabaseSessionId: nextSession.supabaseSessionId,
+          companyInfo: nextSession.companyInfo,
+          operationalPayload,
+          savedAt,
+        }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        supabaseSessionId?: string;
       };
 
-      const response = nextSession.supabaseSessionId
-        ? await supabase
-            .from("sessions")
-            .update(sessionRecord)
-            .eq("id", nextSession.supabaseSessionId)
-            .select("id")
-            .single()
-        : await supabase
-            .from("sessions")
-            .insert(sessionRecord)
-            .select("id")
-            .single();
-
-      if (response.error || !response.data) {
-        throw new Error(
-          response.error?.message ?? "Supabase no devolvio la sesion guardada.",
-        );
+      if (!response.ok || !data.ok || !data.supabaseSessionId) {
+        throw new Error(data.error ?? "Supabase no devolvio la sesion guardada.");
       }
 
       const syncedSession = {
         ...nextSession,
-        supabaseSessionId: response.data.id as string,
+        supabaseSessionId: data.supabaseSessionId,
       };
 
       window.localStorage.setItem(storageKey, JSON.stringify(syncedSession));
